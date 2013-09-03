@@ -28,10 +28,14 @@ describe('json-schema-core', function(){
       var additionalProps = this.subject.additionalProperties;
       assert(additionalProps.links);
     })
+    
+    it('should store path with schema root', function(){
+      var conditions = this.subject.$
+      assert('#' == this.subject.path);
+    })
 
     it('should store path with each condition node', function(){
       var conditions = this.subject.$
-      assert('#' == this.subject.path);
       assert('#/properties' == conditions.properties.path);
       assert('#/type' == conditions.type.path);
     })
