@@ -29,12 +29,23 @@ describe('json-schema-core', function(){
       assert(additionalProps.links);
     })
 
+    it('should store path with each condition node', function(){
+      var conditions = this.subject.$
+      assert('#' == this.subject.path);
+      assert('#/properties' == conditions.properties.path);
+      assert('#/type' == conditions.type.path);
+    })
+
   })
 
   describe('parse properties', function(){
 
     beforeEach( function(){
       this.subject = new Schema(fixtures.parse.properties);
+    })
+
+    it('should parse', function(){ 
+      console.log("subject: %o", this.subject);
     })
 
     it('should parse each property value as a schema', function(){
@@ -45,6 +56,17 @@ describe('json-schema-core', function(){
       assert(props.get('one'));
       assert(props.get('two'));
       assert(props.get('three'));
+    })
+
+    it('should store path with each condition node and each schema under properties', function(){
+      var props = this.subject.$.properties;
+      assert('#/properties' == props.path);
+      assert('#/properties/one' == props.get('one').path);
+      assert('#/properties/two' == props.get('two').path);
+      assert('#/properties/three' == props.get('three').path);
+      assert('#/properties/one/type' == props.get('one').$.type.path);
+      assert('#/properties/two/type' == props.get('two').$.type.path);
+      assert('#/properties/three/type' == props.get('three').$.type.path);
     })
 
   })

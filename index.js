@@ -3,9 +3,10 @@ var each = require('each')
 
 module.exports = Schema;
 
-function Schema(obj,doc){
+function Schema(obj,doc,path){
   if (!(this instanceof Schema)) return new Schema(obj,doc);
   this.document = doc || this;
+  this.path = path || '#';
   this.$ = {};
   this.additionalProperties = {};
   for (var key in obj){
@@ -20,7 +21,8 @@ function Schema(obj,doc){
 }
 
 Schema.prototype.addCondition = function(key,obj,klass){
-  var condition = new klass(obj, this.document);
+  var path = [this.path,key].join('/')
+  var condition = new klass(obj, this.document, path);
   this.$[key] = condition;
 }
 
@@ -64,12 +66,14 @@ function base(target){
 Schema.use(base);
 
 
-function Properties(obj,doc){
+function Properties(obj,doc,path){
   if (!(this instanceof Properties)) return new Properties(obj,doc);
   this.document = doc;
+  this.path = path;
   this._properties = {};
   for (var key in obj){
-    var schema = new Schema(obj[key],doc);
+    var path = [this.path,key].join('/');
+    var schema = new Schema(obj[key],doc,path);
     this._properties[key] = schema;
   }
   return this;
@@ -84,9 +88,10 @@ Properties.prototype.get = function(key){
 }
 
 
-function Type(val,doc){
+function Type(val,doc,path){
   if (!(this instanceof Type)) return new Type(val,doc);
   this.document = doc;
+  this.path = path;
   this._isArray = type(val) == 'array';
   this._values = (this._isArray ? val : [val]);
   return this;
