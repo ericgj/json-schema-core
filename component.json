@@ -1,0 +1,19 @@
+{
+  "name": "json-schema-core",
+  "repo": "ericgj/json-schema-core",
+  "description": "JSON Schema core module",
+  "version": "0.0.1",
+  "keywords": [],
+  "dependencies": {
+    "component/each": "*",  
+    "component/type": "*"
+  },
+  "development": {
+    "timoxley/assert": "*"  
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ]
+}
