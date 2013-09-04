@@ -24,9 +24,9 @@ describe('json-schema-core', function(){
       assert(conditions.properties);
     })
 
-    it('should have links additionalProperties', function(){
-      var additionalProps = this.subject.additionalProperties;
-      assert(additionalProps.links);
+    it('should have links properties', function(){
+      var props = this.subject.properties;
+      assert(props.links);
     })
     
     it('should store path with schema root', function(){
@@ -94,7 +94,7 @@ describe('json-schema-core', function(){
         , prop = props.get('multi')
         , type = prop.$.type
       assert(type.isArray());
-      assert.deepEqual(['string','numeric','enum'],type.value());
+      assert.deepEqual(['string','numeric','enum'],type.values());
     })
 
 
