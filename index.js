@@ -1,6 +1,7 @@
 var each = require('each')
   , type = require('type')
   , indexOf = require('indexof')
+  , has = Object.hasOwnProperty
 
 // from component/inherit
 function inherit(a,b){
@@ -26,47 +27,45 @@ Node.prototype.set = function(key,val){}  // setter
 Node.prototype.each = function(fn){} // iterator
 
 // shortcut
-Node.prototype.$ = function(key){ return this.get(key); }
+Node.prototype.$ = function(key){ return this.getPath(key); }
 
-// recursive get via path
+// recursive get via (absolute or relative) path
 Node.prototype.getPath = function(path){
   var segs = path.split('/')
     , seg = segs.shift()
     , path = segs.join('/')
   if (0 == seg.length) return this;
-  if ('#' == seg) return this.getPath(path); // '#' == this
+  if ('#' == seg) return this.document.getPath(path); // '#' == this.document
   if (!this.has(seg)) return; // or throw error ?
   if (0 == path.length){
-    return this.$(seg);
+    return this.get(seg);
   } else {
-    return this.$(seg).getPath(path);
+    return this.get(seg).getPath(path);
   }
 }
 
 // utility function called from nodes (within parse)
 // note it assumes referents and referrers properties of document object
 
-function dereference(obj,doc){
+function dereference(obj,parent,doc){
   if (type(obj)=='array'){
     each(obj, function(it,i){
-      dereferenceObject(i,it,obj,doc);
+      if (isReference(it)) dereferenceObject(parent,i,it['$ref'],doc);
     })
   } else if (type(obj)=='object'){
     each(obj, function(key,it){
-      dereferenceObject(key,it,obj,doc);  
+      if (isReference(it)) dereferenceObject(parent,key,it['$ref'],doc);
     })
   }
 }
 
-function dereferenceObject(key,obj,parent,doc){
-  if (!isReference(obj)) return;
-  var target = obj['$ref']
-    , ref = doc.referents[target] || doc.getPath(target)
+function dereferenceObject(parent,key,path,doc){
+  var ref = doc.referents[path] || doc.getPath(path)
   if (ref) {
     parent.set(key, ref);
   } else {
-    var path = [parent.path, key].join('/')
-    doc.referrers[path] = target;
+    var curpath = [parent.path, key].join('/')
+    doc.referrers[curpath] = path;
   }
 }
 
@@ -85,11 +84,25 @@ function Document(uri,service){
 Document.prototype.parse = function(obj){
   this.root = new Schema(this);
   this.root.parse(obj);
+  this.dereference();
+  return this;
 }
 
 Document.prototype.getPath = function(path){
   if (!this.root) return;
   return this.root.getPath(path);
+}
+
+// TODO rethrow error if parent node not found
+Document.prototype.dereference = function(){
+  var self = this;
+  each(this.referrers, function(from,target){
+    var ref = self.getPath(target)
+    var parts = from.split('/')
+      , key = parts.pop()
+      , parent = self.getPath(parts.join('/'))
+    parent.set(key, ref);
+  })
 }
 
 
@@ -102,7 +115,7 @@ inherit(Schema,Node);
 Schema.prototype.parse = function(obj){
   this._properties = {};
   this._conditions = {};
-  dereference(obj,this.document);
+  dereference(obj,this,this.document);
   var self = this;
   each(obj, function(key,val){
     if (isReference(val)) return;
@@ -190,7 +203,7 @@ inherit(SchemaCollection,Node);
 
 SchemaCollection.prototype.parse = function(obj){
   this._schemas = {};
-  dereference(obj,this.document);
+  dereference(obj,this,this.document);
   var self = this;
   each(obj, function(key,val){
     if (isReference(val)) return;
@@ -230,7 +243,7 @@ inherit(SchemaArray,Node);
 
 SchemaArray.prototype.parse = function(obj){
   this._schemas = [];
-  dereference(obj,this.document);
+  dereference(obj,this,this.document);
   var self = this;
   each(obj, function(val,i){
     if (isReference(val)) return;
@@ -318,7 +331,7 @@ Type.prototype.parse = function(val){
   this.isArray = type(val) == 'array';
   var self = this;
   if (this.isArray){
-    dereference(val, this.document);
+    dereference(val, this, this.document);
     each(val, function(t,i){
       if (isReference(t)) return;
       self.set(t);
@@ -358,7 +371,7 @@ Items.prototype.parse = function(obj){
   this.isArray = type(obj) == 'array';
   var self = this;
   if (this.isArray){
-    dereference(obj, this.document);
+    dereference(obj, this, this.document);
     each(obj, function(s,i){
       if (isReference(s)) return;
       self.addSchema(s);
@@ -401,7 +414,7 @@ inherit(Dependencies,Node);
 
 Dependencies.prototype.parse = function(obj){
   this._deps = {};
-  dereference(obj,this.document);
+  dereference(obj,this,this.document);
   var self = this;
   each(obj, function(key,val){
     if (isReference(val)) return;

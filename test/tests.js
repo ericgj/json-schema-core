@@ -1,5 +1,7 @@
 var assert = require('timoxley-assert')
-  , Schema = require('json-schema-core').Schema
+  , core = require('json-schema-core')
+  , Document = core.Document
+  , Schema = core.Schema
 
 
 fixtures = {};
@@ -121,6 +123,46 @@ describe('json-schema-core', function(){
 
   })
 
+
+  // todo: more node types
+
+ 
+  // todo: getPath
+
+
+  describe('dereference paths', function(){
+
+    beforeEach(function(){
+      this.document = new Document().parse(fixtures.deref.paths);
+      this.subject = this.document.root;
+    })
+
+    it('should parse', function(){ 
+      console.log("document: %o", this.document);
+    })
+
+    it('should dereference back-references', function(){
+      var props = this.subject.get('properties')
+        , schema = props.get('back')
+      assert(schema);
+      assert(schema.nodeType == 'Schema');
+      assert('string' == schema.get('type').get());
+    })
+
+    it('should store forward-references', function(){
+      var refs = this.document.referrers;
+      assert('#/definitions/string' === refs['#/definitions/forward']);
+    })
+
+    it('should dereference forward-references', function(){
+      assert(this.document.getPath('#/definitions/string') === 
+             this.document.getPath('#/definitions/forward')
+            );
+    })
+
+  })
+
+
 })
 
 fixtures.parse = {};
@@ -146,3 +188,18 @@ fixtures.parse.type = {
   }
 }
 
+
+fixtures.deref = {}
+fixtures.deref.paths = {
+  definitions: {
+    forward: { '$ref': '#/definitions/string'},
+    string: { type: 'string' }
+  },
+  properties: {
+    back: {'$ref': '#/definitions/string'},
+    self: {'$ref': '#'}
+  }
+}
+
+
+  
