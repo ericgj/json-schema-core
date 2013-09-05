@@ -11,7 +11,7 @@ function inherit(a,b){
 
 module.exports = {Schema: Schema, Document: Document};
 
-
+///////
 // abstract base class
 
 function Node(doc,path){
@@ -74,7 +74,8 @@ function isReference(obj){
   return ("object"==type(obj) && obj['$ref']);
 }
 
-//////////////
+///////
+// core classes
 
 function Document(uri,service){
   this.referents = {};
@@ -141,8 +142,7 @@ Schema.prototype.properties = function(){
   return this._properties;
 }
 
-
-// class methods
+// Schema class methods for extensions
 
 Schema.getType = function(prop){ 
   return this._types[prop];
@@ -159,8 +159,8 @@ Schema.use = function(plugin){
 Schema._types = {};
 
 
-/////////
-// inject parse classes 
+///////
+// inject node parse classes by default
 
 function base(target){
   target.addType('items',Items);
@@ -179,7 +179,8 @@ function base(target){
 Schema.use(base);
 
 
-// base parse classes
+///////
+// base node parse classes
 
 function SchemaCollection(doc,path){
   Node.call(this,doc,path);
@@ -262,7 +263,7 @@ SchemaArray.prototype.addSchema = function(key,val){
 
 
 ///////
-// concrete parse classes
+// concrete node parse classes
 
 function Definitions(doc,path){ 
   SchemaCollection.call(this,doc,path); 
