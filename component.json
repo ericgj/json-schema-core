@@ -6,7 +6,8 @@
   "keywords": [],
   "dependencies": {
     "component/each": "*",  
-    "component/type": "*"
+    "component/type": "*",
+    "component/indexOf": "*"
   },
   "development": {
     "timoxley/assert": "*"  
