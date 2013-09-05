@@ -159,19 +159,16 @@ Schema.use = function(plugin){
 Schema._types = {};
 
 
-
-
-
-
+/////////
 // inject parse classes 
 
 function base(target){
-  // target.addType('items',Items);
+  target.addType('items',Items);
   target.addType('definitions',Definitions);
   target.addType('properties',Properties);
   target.addType('patternProperties',PatternProperties);
   target.addType('properties',Properties);
-  // target.addType('dependencies',Dependencies);
+  target.addType('dependencies',Dependencies);
   target.addType('type',Type);
   target.addType('allOf',AllOf);
   target.addType('anyOf',AnyOf);
@@ -264,7 +261,7 @@ SchemaArray.prototype.addSchema = function(key,val){
 }
 
 
-
+///////
 // concrete parse classes
 
 function Definitions(doc,path){ 
@@ -349,90 +346,139 @@ Type.prototype.has = function(val){
 }
 
 
+function Items(doc,path){
+  Node.call(this,doc,path);
+  this.nodeType = 'Items';
+}
+inherit(Items, Node);
 
-/* TODO
-
-function Items(obj,doc,path){
-  this.document = doc;
-  this.path = path;
-  this._isArray = type(obj) == 'array';
-  var items = (this._isArray ? obj : [obj]);
+Items.prototype.parse = function(obj){
   this._items = [];
-  for (var i=0;i<items.length;++i){
-    var path = [this.path,i].join('/');
-    var schema = new Schema(obj[i],doc,path);
-    this._items.push(schema);
+  this.isArray = type(obj) == 'array';
+  var self = this;
+  if (this.isArray){
+    dereference(obj, this.document);
+    each(obj, function(s,i){
+      if (isReference(s)) return;
+      self.addSchema(s);
+    })
+  } else {
+    self.addSchema(obj);
   }
+  return this;
 }
 
-Items.prototype.isArray = function(){ return this._isArray; }
-
-Items.prototype.eachSchema = 
 Items.prototype.each = function(fn){
   each(this._items,fn);
 }
 
-Items.prototype.schema = function(){
-  if (this._isArray) return; // undefined if array of schemas
-  return this._items[0];
+Items.prototype.get = function(i){
+  i = i || 0;
+  return this._items[i];
 }
 
-Items.prototype.schemas = function(){
-  if (!this._isArray) return;  // undefined if single schema
-  return this._items;
+Items.prototype.set = function(schema){
+  this._items.push(schema);
+}
+
+Items.prototype.has = function(schema){
+  return (~indexOf(this._items,schema));
+}
+
+Items.prototype.addSchema = function(obj){
+  var path = [this.path,this._items.length].join('/');
+  var schema = new Schema(this.document,path).parse(obj);
+  this.set(schema);
 }
 
 
-function Dependencies(obj,doc,path){
-  this.document = doc;
-  this.path = path;
-  this._properties = {};
-  for (var prop in obj){
-    var path = [this.path,key].join('/');
-    var dep = new Dependency(obj[key],doc,path);
-    this._properties[key] = dep;
-  }
+function Dependencies(doc,path){
+  Node.call(this,doc,path);
+  this.nodeType = 'Dependencies';
 }
+inherit(Dependencies,Node);
 
-Dependencies.prototype.each =  function(fn){
-  each(this._properties, fn);
+Dependencies.prototype.parse = function(obj){
+  this._deps = {};
+  dereference(obj,this.document);
+  var self = this;
+  each(obj, function(key,val){
+    if (isReference(val)) return;
+    self.addDependency(key,val);
+  })
+  return this;
 }
 
 Dependencies.prototype.get = function(key){
-  return this._properties[key];
+  return this._deps[key];
 }
 
-function Dependency(obj,doc,path){
-  this.document = doc;
-  this.path = path;
-  this._isArray = (type(obj) == 'array');
-  if (this._isArray){
+Dependencies.prototype.set = function(key,schema){
+  this._deps[key] = schema;
+}
+
+Dependencies.prototype.has = function(key){
+  return has.call(this._deps,key);
+}
+
+Dependencies.prototype.each = function(fn){
+  each(this._deps, fn);
+}
+
+Dependencies.prototype.addDependency = function(key,val){
+  var path = [this.path,key].join('/')
+  var dep = new Dependency(this.document, path).parse(val);
+  this.set(key,dep);
+}
+
+
+function Dependency(doc,path){
+  Node.call(this,doc,path);
+  this.nodeType = 'Dependency';
+}
+inherit(Dependency,Node);
+
+Dependency.prototype.parse = function(obj){
+  this._values = [];
+  this._schema = undefined;
+  this.isArray = (type(obj) == 'array');
+  if (this.isArray){
     this._values = obj;
   } else {
-    var schema = new Schema(obj,doc,path);
-    this._item = schema;
+    var schema = new Schema(doc,path).parse(obj);
+    this._schema = schema;
   }
 }
 
-Dependency.prototype.isArray = function(){ return this._isArray; }
-Dependency.prototype.isSchema = function(){ return !this._isArray; }
-
-Dependency.prototype.eachValue =
 Dependency.prototype.each = function(fn){
-  if (!this._isArray) return;
-  each(this._values,fn);
+  if (this.isArray) {
+    each(this._values, fn);
+  } else {
+    fn(this._schema);
+  }
 }
 
-Dependency.prototype.schema = function(){
-  if (this._isArray) return;
-  return this._item;
+Dependency.prototype.get = function(i){
+  if (this.isArray){
+    return this._values[i];
+  } else {
+    return this._schema;
+  }
 }
 
-Dependency.prototype.values = function(){
-  if (!this._isArray) return;
-  return this._values;
+Dependency.prototype.set = function(val){
+  if (this.isArray){
+    this._values.push(val);
+  } else {
+    this._schema = val;
+  }
 }
 
-
-*/
+Dependency.prototype.has = function(val){
+  if (this.isArray){
+    return has.call(this._values,val);
+  } else {
+    return (this._schema === val);
+  }
+}
 
