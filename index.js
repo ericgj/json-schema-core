@@ -11,14 +11,6 @@ function inherit(a,b){
 }
 
 
-module.exports = {
-  Document: Document,
-  Node: Node,
-  Schema: Schema,
-  SchemaCollection: SchemaCollection,
-  SchemaArray: SchemaArray
-};
-
 ///////
 // abstract base class
 
@@ -503,4 +495,13 @@ Dependency.prototype.has = function(val){
     return (this._schema === val);
   }
 }
+
+module.exports = {
+  Document: Document,
+  Node: Node,
+  Schema: Schema,
+  SchemaCollection: SchemaCollection,
+  SchemaArray: SchemaArray
+};
+
 
