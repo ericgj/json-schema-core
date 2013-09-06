@@ -10,7 +10,14 @@ function inherit(a,b){
   a.prototype = new fn;
 }
 
-module.exports = {Schema: Schema, Document: Document};
+
+module.exports = {
+  Document: Document,
+  Node: Node,
+  Schema: Schema,
+  SchemaCollection: SchemaCollection,
+  SchemaArray: SchemaArray
+};
 
 ///////
 // abstract base class
