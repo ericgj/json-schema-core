@@ -107,9 +107,9 @@ describe('json-schema-core', function(){
         , prop = props.get('multi')
         , type = prop.get('type')
       assert(type.isArray);
-      assert(type.has('string'));
-      assert(type.has('numeric'));
-      assert(type.has('enum'));
+      assert(type.has(0));
+      assert(type.has('1'));
+      assert(type.has('2'));
     })
 
     it('should store path for each node', function(){
@@ -126,9 +126,64 @@ describe('json-schema-core', function(){
 
   // todo: more node types
 
- 
-  // todo: getPath
 
+  describe('search paths', function(){
+    
+    beforeEach(function(){
+      this.document = new Document().parse(fixtures.search.all);
+      this.subject = this.document.root;
+    })
+
+    it('should find root from document', function(){
+      assert(this.document.$('#') === this.subject);
+    })
+
+    it('should find root from root', function(){
+      assert(this.subject.$('#') === this.subject);
+    })
+
+    it('should find root from branch', function(){
+      var branch = this.subject.get('definitions').get('one').get('type');
+      assert(branch);
+      assert(branch.$('#') === this.subject);
+    })
+
+    it('should find branch from document', function(){
+      var branch = this.subject.get('properties').get('one').get('oneOf').get(1);
+      assert(branch);
+      assert(this.document.$('#/properties/one/oneOf/1') === branch);
+    })
+
+    it('should find branch from root', function(){
+      var branch = this.subject.get('properties').get('one').get('oneOf').get(1);
+      assert(branch);
+      assert(this.subject.$('#/properties/one/oneOf/1') === branch);
+    })
+
+    it('should find branch from another branch', function(){
+      var branch1 = this.subject.get('definitions').get('two');
+      var branch2 = this.subject.get('properties').get('one').get('oneOf').get('1');
+      assert(branch1);
+      assert(branch2);
+      assert(branch1.$('#/properties/one/oneOf/1') === branch2);
+      assert(branch2.$('#/definitions/two') === branch1);
+    })
+
+    it('should find relative branch from root', function(){
+      var branch = this.subject.get('properties').get('one').get('oneOf').get(1);
+      assert(branch);
+      assert(this.subject.$('properties/one/oneOf/1') === branch);
+    })
+
+    it('should find relative branch from another branch', function(){
+      var branch1 = this.subject.get('properties').get('one');
+      var branch2 = this.subject.get('properties').get('one').get('oneOf').get(1);
+      assert(branch1);
+      assert(branch2);
+      assert(branch1.$('oneOf/1') === branch2);
+    })
+
+  })
 
   describe('dereference paths', function(){
 
@@ -188,8 +243,18 @@ fixtures.parse.type = {
   }
 }
 
+fixtures.search = {};
+fixtures.search.all = {
+  definitions: {
+    one: { type: ['string','boolean'] },
+    two: { }
+  },
+  properties: {
+    one: { oneOf: [ { type: 'string' }, { type: 'boolean' } ] }
+  }
+}
 
-fixtures.deref = {}
+fixtures.deref = {};
 fixtures.deref.paths = {
   definitions: {
     forward: { '$ref': '#/definitions/string'},
@@ -200,6 +265,5 @@ fixtures.deref.paths = {
     self: {'$ref': '#'}
   }
 }
-
 
   

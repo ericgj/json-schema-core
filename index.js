@@ -88,6 +88,7 @@ Document.prototype.parse = function(obj){
   return this;
 }
 
+Document.prototype.$ =
 Document.prototype.getPath = function(path){
   if (!this.root) return;
   return this.root.getPath(path);
@@ -260,16 +261,16 @@ SchemaArray.prototype.set = function(schema){
   this._schemas.push(schema);
 }
 
-SchemaArray.prototype.has = function(schema){
-  return (~indexOf(this._schemas,schema));
+SchemaArray.prototype.has = function(i){
+  return !!this.get(i);
 }
 
 SchemaArray.prototype.each = function(fn){
   each(this._schemas, fn);
 }
 
-SchemaArray.prototype.addSchema = function(key,val){
-  var path = [this.path,key].join('/')
+SchemaArray.prototype.addSchema = function(val){
+  var path = [this.path,this._schemas.length].join('/')
   var schema = new Schema(this.document, path).parse(val);
   this.set(schema);
 }
@@ -355,8 +356,8 @@ Type.prototype.set = function(val){
   this._values.push(val);
 }
 
-Type.prototype.has = function(val){
-  return (~indexOf(this._values,val));
+Type.prototype.has = function(i){
+  return !!this._values[i];
 }
 
 
@@ -395,8 +396,8 @@ Items.prototype.set = function(schema){
   this._items.push(schema);
 }
 
-Items.prototype.has = function(schema){
-  return (~indexOf(this._items,schema));
+Items.prototype.has = function(i){
+  return !!this._items[i];
 }
 
 Items.prototype.addSchema = function(obj){
