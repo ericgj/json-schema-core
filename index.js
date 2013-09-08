@@ -10,6 +10,15 @@ function inherit(a,b){
   a.prototype = new fn;
 }
 
+module.exports = {
+  Document: Document,
+  Node: Node,
+  Schema: Schema,
+  SchemaCollection: SchemaCollection,
+  SchemaArray: SchemaArray
+};
+
+
 
 ///////
 // abstract base class
@@ -42,6 +51,22 @@ Node.prototype.getPath = function(path){
     return this.get(seg).getPath(path);
   }
 }
+
+Node.prototype.dereference = function(obj){
+  var parent = this;
+  if (type(obj)=='array'){
+    each(obj, function(it,i){
+      if (isReference(it)) dereferenceObject(parent,i,it['$ref'],parent.document);
+    })
+  } else if (type(obj)=='object'){
+    each(obj, function(key,it){
+      if (isReference(it)) dereferenceObject(parent,key,it['$ref'],parent.document);
+    })
+  }
+}
+
+Node.prototype.isReference = isReference;
+
 
 // utility function called from nodes (within parse)
 // note it assumes referents and referrers properties of document object
@@ -115,7 +140,7 @@ inherit(Schema,Node);
 Schema.prototype.parse = function(obj){
   this._properties = {};
   this._conditions = {};
-  dereference(obj,this,this.document);
+  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
     if (isReference(val)) return;
@@ -203,10 +228,10 @@ inherit(SchemaCollection,Node);
 
 SchemaCollection.prototype.parse = function(obj){
   this._schemas = {};
-  dereference(obj,this,this.document);
+  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
-    if (isReference(val)) return;
+    if (self.isReference(val)) return;
     self.addSchema(key,val);
   })
   return this;
@@ -243,10 +268,10 @@ inherit(SchemaArray,Node);
 
 SchemaArray.prototype.parse = function(obj){
   this._schemas = [];
-  dereference(obj,this,this.document);
+  this.dereference(obj);
   var self = this;
   each(obj, function(val,i){
-    if (isReference(val)) return;
+    if (self.isReference(val)) return;
     self.addSchema(val);
   })
   return this;
@@ -331,9 +356,9 @@ Type.prototype.parse = function(val){
   this.isArray = type(val) == 'array';
   var self = this;
   if (this.isArray){
-    dereference(val, this, this.document);
+    this.dereference(val);
     each(val, function(t,i){
-      if (isReference(t)) return;
+      if (self.isReference(t)) return;
       self.set(t);
     })
   } else {
@@ -371,9 +396,9 @@ Items.prototype.parse = function(obj){
   this.isArray = type(obj) == 'array';
   var self = this;
   if (this.isArray){
-    dereference(obj, this, this.document);
+    this.dereference(obj);
     each(obj, function(s,i){
-      if (isReference(s)) return;
+      if (self.isReference(s)) return;
       self.addSchema(s);
     })
   } else {
@@ -414,10 +439,10 @@ inherit(Dependencies,Node);
 
 Dependencies.prototype.parse = function(obj){
   this._deps = {};
-  dereference(obj,this,this.document);
+  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
-    if (isReference(val)) return;
+    if (self.isReference(val)) return;
     self.addDependency(key,val);
   })
   return this;
@@ -495,13 +520,4 @@ Dependency.prototype.has = function(val){
     return (this._schema === val);
   }
 }
-
-module.exports = {
-  Document: Document,
-  Node: Node,
-  Schema: Schema,
-  SchemaCollection: SchemaCollection,
-  SchemaArray: SchemaArray
-};
-
 
