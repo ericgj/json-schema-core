@@ -1,14 +1,8 @@
 var each = require('each')
   , type = require('type')
   , indexOf = require('indexof')
+  , inherit = require('inherit')
   , has = Object.hasOwnProperty
-
-// from component/inherit
-function inherit(a,b){
-  var fn = function(){}
-  fn.prototype = b.prototype;
-  a.prototype = new fn;
-}
 
 module.exports = {
   Document: Document,
