@@ -9,7 +9,8 @@ module.exports = {
   Node: Node,
   Schema: Schema,
   SchemaCollection: SchemaCollection,
-  SchemaArray: SchemaArray
+  SchemaArray: SchemaArray,
+  SchemaBoolean: SchemaBoolean
 };
 
 
@@ -170,8 +171,13 @@ Schema.prototype.addCondition = function(key,val,klass){
   this.set(key,condition);
 }
 
+// maybe remove this
 Schema.prototype.properties = function(){
   return this._properties;
+}
+
+Schema.prototype.property = function(key){
+  return this._properties[key];
 }
 
 // Schema class methods for extensions
@@ -196,10 +202,11 @@ Schema._types = {};
 
 function base(target){
   target.addType('items',Items);
+  target.addType('additionalItems',AdditionalItems);
   target.addType('definitions',Definitions);
   target.addType('properties',Properties);
   target.addType('patternProperties',PatternProperties);
-  target.addType('properties',Properties);
+  target.addType('additionalProperties',AdditionalProperties);
   target.addType('dependencies',Dependencies);
   target.addType('type',Type);
   target.addType('allOf',AllOf);
@@ -293,6 +300,53 @@ SchemaArray.prototype.addSchema = function(val){
   this.set(schema);
 }
 
+function SchemaBoolean(doc,path){
+  Node.call(this,doc,path);
+  this.nodeType = 'SchemaBoolean';
+  this._schema = undefined;
+  this._value = false;
+  this.isBoolean = true;
+}
+inherit(AdditionalItems,Node);
+
+SchemaBoolean.prototype.add = function(obj){
+  ("boolean" == typeof obj ? this.addValue(obj) : this.addSchema(obj));
+  return this;
+}
+
+SchemaBoolean.prototype.each = function(fn){
+  this.isBoolean ? fn(this._value) : this._schema.each(fn)
+}
+
+SchemaBoolean.prototype.get = function(key){
+  return (this.isBoolean ? this._value : this._schema.get(key));
+}
+
+SchemaBoolean.prototype.set = function(obj){
+  this.isBoolean = ("boolean" == typeof obj)
+  if (this.isBoolean){
+    this._value = obj;
+  } else {
+    this._schema = obj;
+  }
+}
+
+SchemaBoolean.prototype.has = function(key){
+  return (this.isBoolean ? this._value : this._schema.has(key));
+}
+
+SchemaBoolean.prototype.addValue = function(val){
+  this.set(!!val);
+}
+
+SchemaBoolean.prototype.addSchema = function(obj){
+  var path = this.path;  // note same path
+  var schema = new Schema(this.document,path).parse(obj);
+  this.set(schema);
+}
+
+
+
 
 ///////
 // concrete node parse classes
@@ -338,6 +392,19 @@ function Not(doc,path){
 inherit(Not, Schema);
 
 
+function AdditionalProperties(doc,path){
+  SchemaBoolean.call(this,doc,path);
+  this.nodeType = 'AdditionalProperties';
+}
+function AdditionalItems(doc,path){
+  SchemaBoolean.call(this,doc,path);
+  this.nodeType = 'AdditionalItems';
+}
+inherit(AdditionalProperties,SchemaBoolean);
+inherit(AdditionalItems,SchemaBoolean);
+
+
+// custom node classes
 
 function Type(doc,path){
   Node.call(this,doc,path);
@@ -423,6 +490,7 @@ Items.prototype.addSchema = function(obj){
   var schema = new Schema(this.document,path).parse(obj);
   this.set(schema);
 }
+
 
 
 function Dependencies(doc,path){
