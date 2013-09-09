@@ -128,12 +128,12 @@ Document.prototype.dereference = function(){
 function Schema(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'Schema';
+  this._properties = {};
+  this._conditions = {};
 }
 inherit(Schema,Node);
 
 Schema.prototype.parse = function(obj){
-  this._properties = {};
-  this._conditions = {};
   this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
@@ -217,11 +217,11 @@ Schema.use(base);
 function SchemaCollection(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'SchemaCollection';
+  this._schemas = {};
 }
 inherit(SchemaCollection,Node);
 
 SchemaCollection.prototype.parse = function(obj){
-  this._schemas = {};
   this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
@@ -257,11 +257,11 @@ SchemaCollection.prototype.addSchema = function(key,val){
 function SchemaArray(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'SchemaArray';
+  this._schemas = [];
 }
 inherit(SchemaArray,Node);
 
 SchemaArray.prototype.parse = function(obj){
-  this._schemas = [];
   this.dereference(obj);
   var self = this;
   each(obj, function(val,i){
@@ -342,11 +342,11 @@ inherit(Not, Schema);
 function Type(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'Type';
+  this._values = [];
 }
 inherit(Type, Node);
 
 Type.prototype.parse = function(val){
-  this._values = [];
   this.isArray = type(val) == 'array';
   var self = this;
   if (this.isArray){
@@ -382,11 +382,11 @@ Type.prototype.has = function(i){
 function Items(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'Items';
+  this._items = [];
 }
 inherit(Items, Node);
 
 Items.prototype.parse = function(obj){
-  this._items = [];
   this.isArray = type(obj) == 'array';
   var self = this;
   if (this.isArray){
@@ -428,11 +428,11 @@ Items.prototype.addSchema = function(obj){
 function Dependencies(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'Dependencies';
+  this._deps = {};
 }
 inherit(Dependencies,Node);
 
 Dependencies.prototype.parse = function(obj){
-  this._deps = {};
   this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
@@ -468,12 +468,12 @@ Dependencies.prototype.addDependency = function(key,val){
 function Dependency(doc,path){
   Node.call(this,doc,path);
   this.nodeType = 'Dependency';
+  this._values = [];
+  this._schema = undefined;
 }
 inherit(Dependency,Node);
 
 Dependency.prototype.parse = function(obj){
-  this._values = [];
-  this._schema = undefined;
   this.isArray = (type(obj) == 'array');
   if (this.isArray){
     this._values = obj;
