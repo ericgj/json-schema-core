@@ -1,6 +1,5 @@
 var each = require('each')
   , type = require('type')
-  , indexOf = require('indexof')
   , inherit = require('inherit')
   , has = Object.hasOwnProperty
 

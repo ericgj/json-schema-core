@@ -7,7 +7,6 @@
   "dependencies": {
     "component/each": "*",  
     "component/type": "*",
-    "component/indexOf": "*",
     "component/inherit": "*"
   },
   "development": {
