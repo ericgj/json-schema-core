@@ -174,11 +174,6 @@ Schema.prototype.addCondition = function(key,val,klass){
   this.set(key,condition);
 }
 
-// maybe remove this
-Schema.prototype.properties = function(){
-  return this._properties;
-}
-
 Schema.prototype.property = function(key){
   return this._properties[key];
 }

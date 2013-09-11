@@ -41,9 +41,8 @@ describe('json-schema-core', function(){
     })
 
     it('should have unparsed properties', function(){
-      var props = this.subject.properties();
-      assert(props.foo);
-      assert(props.bar);
+      assert(this.subject.property('foo'));
+      assert(this.subject.property('bar'));
     })
     
     it('should store path', function(){
