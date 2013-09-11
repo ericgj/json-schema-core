@@ -6,6 +6,14 @@ var assert = require('timoxley-assert')
 
 fixtures = {};
 
+Schema.addBinding('nodeTypeAt', nodeTypeAt);
+
+
+// stupid binding function for testing
+function nodeTypeAt(path){
+  var target = this.schema.$(path)
+  return target && target.nodeType;
+}
 
 ///////////////////////////////////
 
@@ -217,8 +225,80 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('binding', function(){
+   
+    function bindTo(sch,inst){
+      var schema = new Schema().parse(fixtures.correlate[sch]);
+      return schema.bind(fixtures.instance[inst]);
+    }
+
+    it('should bind to an instance', function(){
+      var act = bindTo('simple', 'valid');
+      assert(act);
+    })
+   
+    it('should get sub-correlate', function(){
+      var subject = bindTo('simple','valid');
+      var expschema = subject.schema.get('properties').get('complex')
+        , expinst = subject.instance.complex
+      var act = subject.get('complex');
+      assert(act);
+      assert(expschema === act.schema);
+      assert(expinst   === act.instance);
+    })
+
+    it('should get sub-correlate recursively', function(){
+      var subject = bindTo('simple','valid');
+      var expschema = subject.schema.get('properties').get('complex')
+                                    .get('properties').get('two')
+        , expinst = subject.instance.complex.two
+      assert(expschema);
+      assert(expinst);
+      var act = subject.$('#/complex/two');
+      assert(act);
+      assert(expschema === act.schema);
+      assert(expinst   === act.instance);
+    })
+
+    it('should return undefined if instance doesnt have specified property in schema', function(){
+      var subject = bindTo('simple','invalid');
+      var expschema = subject.schema.get('properties').get('complex')
+                                    .get('properties').get('two')
+        , expinst = subject.instance.complex.two
+      assert(expschema);
+      assert(expinst === undefined);
+      var act = subject.$('#/complex/two');
+      assert(act === undefined);
+    })
+
+    it('should return undefined if schema doesnt have specified property in instance', function(){
+      var subject = bindTo('simple','additional');
+      var expschema = subject.schema.get('properties').get('complex')
+                                    .get('properties').get('four')
+        , expinst = subject.instance.complex.four
+      assert(expschema === undefined);
+      assert(expinst);
+      var act = subject.$('#/complex/four');
+      assert(act === undefined);
+    })
+    
+    it('should mix in binding method', function(){
+      var subject = bindTo('simple','valid');
+      assert(subject.nodeTypeAt);
+    })
+    
+    it('binding method should be callable bound to correlation', function(){
+      var subject = bindTo('simple','valid');
+      assert('Schema' == subject.nodeTypeAt('#/properties/complex/properties/three'));
+    })
+
+  })
 
 })
+
+
+
+// fixtures
 
 fixtures.parse = {};
 fixtures.parse.simple = {
@@ -267,3 +347,57 @@ fixtures.deref.paths = {
 }
 
   
+fixtures.correlate = {};
+fixtures.correlate.simple = {
+  properties: {
+    simple: { type: 'string' },
+    complex: { 
+      type: 'object',
+      properties: {
+        one: {},
+        two: {
+          type: 'object',
+          properties: {
+            deep: {}
+          }
+        },
+        three: {}
+      }
+    }
+  }
+}
+
+fixtures.instance = {};
+fixtures.instance.valid = {
+  simple: "word",
+  complex: {
+    one: "of",
+    two: {
+      deep: "sea"
+    },
+    three: "kings"
+  }
+}
+
+fixtures.instance.invalid = {
+  simple: "man",
+  complex: {
+    one: "to",
+    three: "years"
+  }
+}
+
+fixtures.instance.additional = {
+  simple: "giant",
+  complex: {
+    one: "hand",
+    two: {
+      deep: "trees"
+    },
+    three: "fellows",
+    four: "sleep"
+  }
+}
+
+
+

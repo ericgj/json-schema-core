@@ -4,13 +4,16 @@ var each = require('each')
   , inherit = require('inherit')
   , has = Object.hasOwnProperty
 
+var Correlation = require('./correlation');
+
 module.exports = {
   Document: Document,
   Node: Node,
   Schema: Schema,
   SchemaCollection: SchemaCollection,
   SchemaArray: SchemaArray,
-  SchemaBoolean: SchemaBoolean
+  SchemaBoolean: SchemaBoolean,
+  Correlation: Correlation
 };
 
 
@@ -180,6 +183,17 @@ Schema.prototype.property = function(key){
   return this._properties[key];
 }
 
+
+// mix in each binding method into a Correlation object
+Schema.prototype.bind = function(instance){
+  var ret = new Correlation(this,instance);
+  for (var key in Schema._bindings){
+    var fn = Schema._bindings[key];
+    ret[key] = fn.bind(ret);
+  }
+  return ret;
+}
+
 // Schema class methods for extensions
 
 Schema.getType = function(prop){ 
@@ -190,12 +204,16 @@ Schema.addType = function(prop,klass){
   this._types[prop] = klass;
 }
 
+Schema.addBinding = function(key, fn){
+  this._bindings[key] = fn;
+}
+
 Schema.use = function(plugin){
   plugin(this);
 }
 
 Schema._types = {};
-
+Schema._bindings = {};
 
 ///////
 // inject node parse classes by default
