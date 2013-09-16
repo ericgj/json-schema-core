@@ -138,7 +138,7 @@ describe('json-schema-core', function(){
     
     beforeEach(function(){
       this.document = new Document().parse(fixtures.search.all);
-      this.subject = this.document.root;
+      this.subject = this.document.root();
     })
 
     it('should find root from document', function(){
@@ -196,7 +196,7 @@ describe('json-schema-core', function(){
 
     beforeEach(function(){
       this.document = new Document().parse(fixtures.deref.paths);
-      this.subject = this.document.root;
+      this.subject = this.document.root();
     })
 
     it('should parse', function(){ 

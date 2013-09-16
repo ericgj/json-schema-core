@@ -100,19 +100,25 @@ function isReference(obj){
 function Document(uri,service){
   this.referents = {};
   this.referrers = {};
+  this._root = undefined;
+}
+
+Document.prototype.root = function(){
+  return this._root;
 }
 
 Document.prototype.parse = function(obj){
-  this.root = new Schema(this);
-  this.root.parse(obj);
+  this._root = new Schema(this);
+  this._root.parse(obj);
   this.dereference();
   return this;
 }
 
 Document.prototype.$ =
 Document.prototype.getPath = function(path){
-  if (!this.root) return;
-  return this.root.getPath(path);
+  var root = this.root();
+  if (!root) return;
+  return root.getPath(path);
 }
 
 // TODO rethrow error if parent node not found
