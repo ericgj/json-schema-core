@@ -101,10 +101,16 @@ function Document(uri,service){
   this.referents = {};
   this.referrers = {};
   this._root = undefined;
+  this._rootPath = '#';  // instance root path
 }
 
 Document.prototype.root = function(){
   return this._root;
+}
+
+Document.prototype.rootPath = function(path){
+  if (path) { this._rootPath = path; }
+  else { return this._rootPath }
 }
 
 Document.prototype.parse = function(obj){
