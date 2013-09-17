@@ -25,6 +25,7 @@ Correlation.prototype.subschema = function(prop){
 }
 
 Correlation.prototype.get = function(prop){
+  if (!(this.schema && this.instance)) return;
   var instance = this.instance[prop]
   if (!instance) return;
   var schema = this.subschema(prop)
@@ -35,8 +36,6 @@ Correlation.prototype.get = function(prop){
 Correlation.prototype.$ = function(path){ return this.getPath(path); }
 
 Correlation.prototype.getPath = function(path){
-  var instance = this.instance
-    , schema = this.schema
   if (0==path.length) return this;
   var parts = path.split('/')
     , prop = parts.shift()
@@ -45,5 +44,17 @@ Correlation.prototype.getPath = function(path){
   var branch = this.get(prop)
   if (!branch) return;
   return branch.getPath(rest);
+}
+
+
+// this is assuming the schema describes the whole instance, not already
+// the root instance.
+
+Correlation.prototype.getRoot = function(){
+  if (!(this.schema && this.instance)) return;
+  var doc = this.schema.document
+    , path = doc.rootPath
+  if (!doc) return this;
+  return this.getPath(path);
 }
 
