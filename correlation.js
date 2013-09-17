@@ -46,15 +46,3 @@ Correlation.prototype.getPath = function(path){
   return branch.getPath(rest);
 }
 
-
-// this is assuming the schema describes the whole instance, not already
-// the root instance.
-
-Correlation.prototype.getRoot = function(){
-  if (!(this.schema && this.instance)) return;
-  var doc = this.schema.document
-    , path = doc.rootPath
-  if (!doc) return this;
-  return this.getPath(path);
-}
-
