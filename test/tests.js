@@ -293,6 +293,26 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('Schema#and', function(){
+
+    beforeEach( function(){
+      this.s1 = new Schema().parse(fixtures.parse.simple);
+      this.s2 = new Schema().parse(fixtures.parse.properties);
+      this.s3 = new Schema().parse(fixtures.parse.type);
+      this.subject = new Schema()
+    })
+
+    it('should return new schema with the current schema plus all passed schemas within allOf', function(){
+      var act = this.subject.and(this.s1,this.s2,this.s3); 
+      console.log('schema AND: %o', act);
+      var allOf = act.get('allOf');
+      assert(allOf);
+      var n=0; allOf.each(function(){ n++; });
+      assert(4 == n);
+    })
+
+  })
+
 })
 
 

@@ -64,6 +64,13 @@ Node.prototype.dereference = function(obj){
 
 Node.prototype.isReference = isReference;
 
+Node.prototype.resetPaths = function(rootPath){
+  rootPath = rootPath || this.path;
+  this.each(function(key,obj){
+    obj.path = [rootPath,key].join('/');
+    if (obj.resetPaths) obj.resetPaths();
+  });
+}
 
 // utility function called from nodes (within parse)
 // note it assumes referents and referrers properties of document object
@@ -183,6 +190,21 @@ Schema.prototype.property = function(key){
   return this._properties[key];
 }
 
+Schema.prototype.allOf = function(){
+  var schemas = [].slice.call(arguments,0);
+  if (!this.get('allOf')) this.addCondition('allOf',[],AllOf);
+  var allof = this.get('allOf')
+  for (var i=0;i<schemas.length;++i) allof.set(schemas[i]);
+  return this;
+}
+
+Schema.prototype.and = function(){
+  var schemas = [].slice.call(arguments,0);
+  schemas.unshift(this);
+  var schema = new Schema(); // not bound to document
+  schema.allOf.apply(schema,schemas);
+  return schema;
+}
 
 // mix in each binding method into a Correlation object
 Schema.prototype.bind = function(instance){
