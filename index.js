@@ -198,7 +198,7 @@ Schema.prototype.allOf = function(){
   return this;
 }
 
-Schema.prototype.and = function(){
+Schema.prototype.union = function(){
   var schemas = [].slice.call(arguments,0);
   schemas.unshift(this);
   var schema = new Schema(); // not bound to document

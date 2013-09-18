@@ -331,7 +331,7 @@ describe('json-schema-core', function(){
 
   })
 
-  describe('Schema#and', function(){
+  describe('schema union', function(){
 
     beforeEach( function(){
       this.s1 = new Schema().parse(fixtures.parse.simple);
@@ -341,12 +341,21 @@ describe('json-schema-core', function(){
     })
 
     it('should return new schema with the current schema plus all passed schemas within allOf', function(){
-      var act = this.subject.and(this.s1,this.s2,this.s3); 
-      console.log('schema AND: %o', act);
+      var act = this.subject.union(this.s1,this.s2,this.s3); 
+      console.log('schema union: %o', act);
       var allOf = act.get('allOf');
       assert(allOf);
       var n=0; allOf.each(function(){ n++; });
       assert(4 == n);
+    })
+
+    it('should reset paths', function(){
+      var act = this.subject.union(this.s1,this.s2,this.s3);
+      var allof = act.get('allOf');
+      assert('#/allOf' == allof.path);
+      assert('#/allOf/3/properties/simple/type' == 
+             allof.get(3).get('properties').get('simple').get('type').path
+            );
     })
 
   })
