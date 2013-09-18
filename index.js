@@ -64,11 +64,11 @@ Node.prototype.dereference = function(obj){
 
 Node.prototype.isReference = isReference;
 
-Node.prototype.resetPaths = function(rootPath){
+Node.prototype.resetPath = function(rootPath){
   rootPath = rootPath || this.path;
   this.each(function(key,obj){
     obj.path = [rootPath,key].join('/');
-    if (obj.resetPaths) obj.resetPaths();
+    if (obj.resetPath) obj.resetPath();
   });
 }
 
@@ -203,6 +203,7 @@ Schema.prototype.and = function(){
   schemas.unshift(this);
   var schema = new Schema(); // not bound to document
   schema.allOf.apply(schema,schemas);
+  schema.resetPath();
   return schema;
 }
 
@@ -331,7 +332,7 @@ SchemaArray.prototype.has = function(i){
 }
 
 SchemaArray.prototype.each = function(fn){
-  each(this._schemas, fn);
+  each(this._schemas, function(obj,i){ fn(i,obj); });
 }
 
 SchemaArray.prototype.addSchema = function(val){
@@ -355,7 +356,11 @@ SchemaBoolean.prototype.add = function(obj){
 }
 
 SchemaBoolean.prototype.each = function(fn){
-  this.isBoolean ? fn(this._value) : this._schema.each(fn)
+  if (this.isBoolean){
+    fn(undefined, this._value)  // not sure about this
+  } else {
+    this._schema.each(fn)
+  }
 }
 
 SchemaBoolean.prototype.get = function(key){
@@ -469,7 +474,7 @@ Type.prototype.parse = function(val){
 }
 
 Type.prototype.each = function(fn){
-  each(this._values,fn);
+  each(this._values,function(val,i){ fn(i,val); });
 }
 
 Type.prototype.get = function(i){
@@ -509,7 +514,7 @@ Items.prototype.parse = function(obj){
 }
 
 Items.prototype.each = function(fn){
-  each(this._items,fn);
+  each(this._items, function(schema,i){ fn(i,schema); });
 }
 
 Items.prototype.get = function(i){
@@ -593,9 +598,9 @@ Dependency.prototype.parse = function(obj){
 
 Dependency.prototype.each = function(fn){
   if (this.isArray) {
-    each(this._values, fn);
+    each(this._values, function(val,i){ fn(i,val); });
   } else {
-    fn(this._schema);
+    this._schema.each(fn); // not sure about this
   }
 }
 

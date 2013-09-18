@@ -25,7 +25,7 @@ describe('json-schema-core', function(){
     })
 
     it('should parse', function(){ 
-      console.log("subject: %o", this.subject);
+      console.log("subject simple: %o", this.subject);
     })
 
     it('should have properties condition', function(){
@@ -65,7 +65,7 @@ describe('json-schema-core', function(){
     })
 
     it('should parse', function(){ 
-      console.log("subject: %o", this.subject);
+      console.log("subject properties: %o", this.subject);
     })
 
     it('should parse each property value as a schema', function(){
@@ -98,7 +98,7 @@ describe('json-schema-core', function(){
     })
 
     it('should parse', function(){ 
-      console.log("subject: %o", this.subject);
+      console.log("subject type: %o", this.subject);
     })
 
     it('should parse simple type', function(){
@@ -130,8 +130,46 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('parse allOf', function(){
+
+    beforeEach( function(){
+      this.subject = new Schema().parse(fixtures.parse.allof);
+    })
+
+    it('should parse', function(){ 
+      console.log("subject allof: %o", this.subject);
+    })
+
+    it('should parse each array item as a schema', function(){
+      var allof = this.subject.get('allOf');
+      allof.each(function(i,val){
+        assert(val.nodeType == 'Schema'); 
+      })
+      assert(allof.get('0'));
+      assert(allof.get(1));
+      assert(allof.get('2'));
+    })
+
+    it('should store path for each node', function(){
+      var allof = this.subject.get('allOf');
+      assert('#/allOf' == allof.path);
+      assert('#/allOf/0' == allof.get(0).path);
+      assert('#/allOf/1' == allof.get('1').path);
+      assert('#/allOf/2' == allof.get(2).path);
+      assert('#/allOf/1/properties' == allof.get('1').get('properties').path);
+      assert('#/allOf/2/properties/simple/type' == 
+             allof.get(2).get('properties').get('simple').get('type').path
+            );
+    })
+
+  })
+
+
 
   // todo: more node types
+  describe('parse other node types', function(){
+    it('should have some tests, once I start implementing validation');
+  })
 
 
   describe('search paths', function(){
@@ -340,6 +378,14 @@ fixtures.parse.type = {
     simple: { type: 'string' },
     multi:  { type: ['string', 'numeric', 'enum'] }
   }
+}
+
+fixtures.parse.allof = {
+  allOf: [
+    fixtures.parse.simple,
+    fixtures.parse.properties,
+    fixtures.parse.type
+  ]
 }
 
 fixtures.search = {};
