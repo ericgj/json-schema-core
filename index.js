@@ -222,7 +222,7 @@ Schema.prototype.bind = function(instance){
 Schema.union = function(){
   var args = [].slice.call(arguments,0)
   var s = new Schema()
-  return s.union.apply(s,args);
+  return s.allOf.apply(s,args);
 }
 
 Schema.getType = function(prop){ 
