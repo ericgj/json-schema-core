@@ -357,6 +357,14 @@ describe('json-schema-core', function(){
              allof.get(3).get('properties').get('simple').get('type').path
             );
     })
+    
+    it('should construct new union schema from Schema.union', function(){
+      var act = Schema.union(this.s1,this.s2,this.s3);
+      var allOf = act.get('allOf');
+      assert(allOf);
+      var n=0; allOf.each(function(){ n++; });
+      assert(4 == n);
+    })
 
   })
 

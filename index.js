@@ -217,7 +217,13 @@ Schema.prototype.bind = function(instance){
   return ret;
 }
 
-// Schema class methods for extensions
+// Schema class methods
+
+Schema.union = function(){
+  var args = [].slice.call(arguments,0)
+  var s = new Schema()
+  return s.union.apply(s,args);
+}
 
 Schema.getType = function(prop){ 
   return this._types[prop];

@@ -2,7 +2,7 @@
   "name": "json-schema-core",
   "repo": "ericgj/json-schema-core",
   "description": "JSON Schema core module",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "keywords": [],
   "dependencies": {
     "component/each": "*",  
