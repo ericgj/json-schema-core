@@ -358,9 +358,9 @@ describe('json-schema-core', function(){
             );
     })
     
-    it('should construct new union schema from Schema.union', function(){
-      var act = Schema.union(this.s1,this.s2,this.s3);
-      console.log('Schema union: %o', act);
+    it('should construct new union schema from Schema.allOf', function(){
+      var act = Schema.allOf(this.s1,this.s2,this.s3);
+      console.log('Schema allOf: %o', act);
       var allOf = act.get('allOf');
       assert(allOf);
       var n=0; allOf.each(function(){ n++; });

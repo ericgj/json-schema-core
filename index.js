@@ -219,7 +219,7 @@ Schema.prototype.bind = function(instance){
 
 // Schema class methods
 
-Schema.union = function(){
+Schema.allOf = function(){
   var args = [].slice.call(arguments,0)
   var s = new Schema()
   return s.allOf.apply(s,args);
