@@ -45,17 +45,6 @@ describe('json-schema-core', function(){
       assert(this.subject.property('bar'));
     })
     
-    it('should store path', function(){
-      var conditions = this.subject
-      assert('#' == this.subject.path);
-    })
-
-    it('should store path for each node', function(){
-      var conditions = this.subject
-      assert('#/properties' == conditions.get('properties').path);
-      assert('#/type' == conditions.get('type').path);
-    })
-
   })
 
   describe('parse properties', function(){
@@ -76,17 +65,6 @@ describe('json-schema-core', function(){
       assert(props.get('one'));
       assert(props.get('two'));
       assert(props.get('three'));
-    })
-
-    it('should store path for each node', function(){
-      var props = this.subject.get('properties');
-      assert('#/properties' == props.path);
-      assert('#/properties/one' == props.get('one').path);
-      assert('#/properties/two' == props.get('two').path);
-      assert('#/properties/three' == props.get('three').path);
-      assert('#/properties/one/type' == props.get('one').get('type').path);
-      assert('#/properties/two/type' == props.get('two').get('type').path);
-      assert('#/properties/three/type' == props.get('three').get('type').path);
     })
 
   })
@@ -119,14 +97,6 @@ describe('json-schema-core', function(){
       assert(type.has('2'));
     })
 
-    it('should store path for each node', function(){
-      var props = this.subject.get('properties')
-      props.each( function(key,prop){
-        assert('#/properties/'+key == prop.path);
-        var type = prop.get('type');
-        assert('#/properties/'+key+'/type' == type.path);
-      })
-    })
 
   })
 
@@ -148,18 +118,6 @@ describe('json-schema-core', function(){
       assert(allof.get('0'));
       assert(allof.get(1));
       assert(allof.get('2'));
-    })
-
-    it('should store path for each node', function(){
-      var allof = this.subject.get('allOf');
-      assert('#/allOf' == allof.path);
-      assert('#/allOf/0' == allof.get(0).path);
-      assert('#/allOf/1' == allof.get('1').path);
-      assert('#/allOf/2' == allof.get(2).path);
-      assert('#/allOf/1/properties' == allof.get('1').get('properties').path);
-      assert('#/allOf/2/properties/simple/type' == 
-             allof.get(2).get('properties').get('simple').get('type').path
-            );
     })
 
   })
@@ -230,7 +188,7 @@ describe('json-schema-core', function(){
 
   })
 
-  describe('dereference paths', function(){
+  describe('dereference paths, local', function(){
 
     beforeEach(function(){
       this.document = new Document().parse(fixtures.deref.paths);
@@ -242,22 +200,15 @@ describe('json-schema-core', function(){
     })
 
     it('should dereference back-references', function(){
-      var props = this.subject.get('properties')
-        , schema = props.get('back')
-      assert(schema);
-      assert(schema.nodeType == 'Schema');
-      assert('string' == schema.get('type').get());
-    })
-
-    it('should store forward-references', function(){
-      var refs = this.document.referrers;
-      assert('#/definitions/string' === refs['#/definitions/forward']);
+      var act = this.subject.get('properties').get('back').get('type').get()
+      assert(act == 'string');
+      act = this.subject.get('properties').get('self')
+      assert(act === this.subject);
     })
 
     it('should dereference forward-references', function(){
-      assert(this.document.getPath('#/definitions/string') === 
-             this.document.getPath('#/definitions/forward')
-            );
+      var act = this.subject.get('definitions').get('forward').get('type').get()
+      assert(act == 'string');
     })
 
   })
@@ -349,15 +300,6 @@ describe('json-schema-core', function(){
       assert(4 == n);
     })
 
-    it('should reset paths', function(){
-      var act = this.subject.union(this.s1,this.s2,this.s3);
-      var allof = act.get('allOf');
-      assert('#/allOf' == allof.path);
-      assert('#/allOf/3/properties/simple/type' == 
-             allof.get(3).get('properties').get('simple').get('type').path
-            );
-    })
-    
     it('should construct new union schema from Schema.allOf', function(){
       var act = Schema.allOf(this.s1,this.s2,this.s3);
       console.log('Schema allOf: %o', act);

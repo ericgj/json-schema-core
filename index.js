@@ -3,7 +3,8 @@ var each = require('each')
   , inherit = require('inherit')
   , has = Object.hasOwnProperty
 
-var Correlation = require('./correlation');
+var Correlation = require('./correlation')
+  , References = require('./refs')
 
 module.exports = {
   Document: Document,
@@ -20,9 +21,8 @@ module.exports = {
 ///////
 // abstract base class
 
-function Node(doc,path){
+function Node(doc){
  this.document = doc || this;
- this.path = path || '#';
  this.nodeType = 'Node';
 }
 Node.prototype.parse = function(obj){} // subclass parse
@@ -49,55 +49,7 @@ Node.prototype.getPath = function(path){
   }
 }
 
-Node.prototype.dereference = function(obj){
-  var parent = this;
-  if (type(obj)=='array'){
-    each(obj, function(it,i){
-      if (isReference(it)) dereferenceObject(parent,i,it['$ref'],parent.document);
-    })
-  } else if (type(obj)=='object'){
-    each(obj, function(key,it){
-      if (isReference(it)) dereferenceObject(parent,key,it['$ref'],parent.document);
-    })
-  }
-}
-
-Node.prototype.isReference = isReference;
-
-Node.prototype.resetPath = function(rootPath){
-  rootPath = rootPath || this.path;
-  this.each(function(key,obj){
-    obj.path = [rootPath,key].join('/');
-    if (obj.resetPath) obj.resetPath();
-  });
-}
-
-// utility function called from nodes (within parse)
-// note it assumes referents and referrers properties of document object
-
-function dereference(obj,parent,doc){
-  if (type(obj)=='array'){
-    each(obj, function(it,i){
-      if (isReference(it)) dereferenceObject(parent,i,it['$ref'],doc);
-    })
-  } else if (type(obj)=='object'){
-    each(obj, function(key,it){
-      if (isReference(it)) dereferenceObject(parent,key,it['$ref'],doc);
-    })
-  }
-}
-
-function dereferenceObject(parent,key,path,doc){
-  var ref = doc.referents[path] || doc.getPath(path)
-  if (ref) {
-    parent.set(key, ref);
-  } else {
-    var curpath = [parent.path, key].join('/')
-    doc.referrers[curpath] = path;
-  }
-}
-
-function isReference(obj){
+Node.prototype.isReference = function(obj){
   return ("object"==type(obj) && obj['$ref']);
 }
 
@@ -105,9 +57,8 @@ function isReference(obj){
 // core classes
 
 function Document(uri,service){
-  this.referents = {};
-  this.referrers = {};
   this._root = undefined;
+  this._refs = undefined; 
 }
 
 Document.prototype.root = function(){
@@ -115,6 +66,7 @@ Document.prototype.root = function(){
 }
 
 Document.prototype.parse = function(obj){
+  this._refs = new References(obj);
   this._root = new Schema(this);
   this._root.parse(obj);
   this.dereference();
@@ -122,6 +74,19 @@ Document.prototype.parse = function(obj){
 }
 
 Document.prototype.$ =
+Document.prototype.fragment = function(key){
+  return this.getId(key) || this.getPath(key.toString());
+}
+
+// note id should be a canonical uri (object or string)
+Document.prototype.getId   = function(id){
+  var refs = this._refs;
+  if (!refs) return;
+  var path = refs.getReferent(id);
+  if (!path) return;
+  return this.getPath(path);
+}
+
 Document.prototype.getPath = function(path){
   var root = this.root();
   if (!root) return;
@@ -130,19 +95,23 @@ Document.prototype.getPath = function(path){
 
 // TODO rethrow error if parent node not found
 Document.prototype.dereference = function(){
-  var self = this;
-  each(this.referrers, function(from,target){
-    var ref = self.getPath(target)
-    var parts = from.split('/')
-      , key = parts.pop()
-      , parent = self.getPath(parts.join('/'))
-    parent.set(key, ref);
+  var refs = this._refs
+    , self = this
+  if (!refs) return;
+  refs.eachReferrer( function(from,target){
+    var ref = self.$(target)  // try inline dereference by URI or JSON pointer 
+    if (ref) {
+      var parts = from.split('/')
+        , key = parts.pop()
+        , parent = self.getPath(parts.join('/'))
+      parent.set(key, ref);
+    }
   })
 }
 
 
-function Schema(doc,path){
-  Node.call(this,doc,path);
+function Schema(doc){
+  Node.call(this,doc);
   this.nodeType = 'Schema';
   this._properties = {};
   this._conditions = {};
@@ -150,10 +119,9 @@ function Schema(doc,path){
 inherit(Schema,Node);
 
 Schema.prototype.parse = function(obj){
-  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
-    if (isReference(val)) return;
+    if (self.isReference(val)) return;
     var klass = Schema.getType(key);
     if (klass){
       self.addCondition(key,val,klass);
@@ -181,8 +149,7 @@ Schema.prototype.each = function(fn){
 }
 
 Schema.prototype.addCondition = function(key,val,klass){
-  var path = [this.path,key].join('/')
-  var condition = new klass(this.document, path).parse(val);
+  var condition = new klass(this.document).parse(val);
   this.set(key,condition);
 }
 
@@ -203,7 +170,6 @@ Schema.prototype.union = function(){
   schemas.unshift(this);
   var schema = new Schema(); // not bound to document
   schema.allOf.apply(schema,schemas);
-  schema.resetPath();
   return schema;
 }
 
@@ -268,15 +234,14 @@ Schema.use(base);
 ///////
 // base node parse classes
 
-function SchemaCollection(doc,path){
-  Node.call(this,doc,path);
+function SchemaCollection(doc){
+  Node.call(this,doc);
   this.nodeType = 'SchemaCollection';
   this._schemas = {};
 }
 inherit(SchemaCollection,Node);
 
 SchemaCollection.prototype.parse = function(obj){
-  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
     if (self.isReference(val)) return;
@@ -302,21 +267,19 @@ SchemaCollection.prototype.each = function(fn){
 }
 
 SchemaCollection.prototype.addSchema = function(key,val){
-  var path = [this.path,key].join('/')
-  var schema = new Schema(this.document, path).parse(val);
+  var schema = new Schema(this.document).parse(val);
   this.set(key,schema);
 }
 
 
-function SchemaArray(doc,path){
-  Node.call(this,doc,path);
+function SchemaArray(doc){
+  Node.call(this,doc);
   this.nodeType = 'SchemaArray';
   this._schemas = [];
 }
 inherit(SchemaArray,Node);
 
 SchemaArray.prototype.parse = function(obj){
-  this.dereference(obj);
   var self = this;
   each(obj, function(val,i){
     if (self.isReference(val)) return;
@@ -342,13 +305,12 @@ SchemaArray.prototype.each = function(fn){
 }
 
 SchemaArray.prototype.addSchema = function(val){
-  var path = [this.path,this._schemas.length].join('/')
-  var schema = new Schema(this.document, path).parse(val);
+  var schema = new Schema(this.document).parse(val);
   this.set(schema);
 }
 
-function SchemaBoolean(doc,path){
-  Node.call(this,doc,path);
+function SchemaBoolean(doc){
+  Node.call(this,doc);
   this.nodeType = 'SchemaBoolean';
   this._schema = undefined;
   this._value = false;
@@ -391,8 +353,7 @@ SchemaBoolean.prototype.addValue = function(val){
 }
 
 SchemaBoolean.prototype.addSchema = function(obj){
-  var path = this.path;  // note same path
-  var schema = new Schema(this.document,path).parse(obj);
+  var schema = new Schema(this.document).parse(obj);
   this.set(schema);
 }
 
@@ -402,16 +363,16 @@ SchemaBoolean.prototype.addSchema = function(obj){
 ///////
 // concrete node parse classes
 
-function Definitions(doc,path){ 
-  SchemaCollection.call(this,doc,path); 
+function Definitions(doc){ 
+  SchemaCollection.call(this,doc); 
   this.nodeType = 'Definitions';
 }
-function Properties(doc,path){
-  SchemaCollection.call(this,doc,path); 
+function Properties(doc){
+  SchemaCollection.call(this,doc); 
   this.nodeType = 'Properties';
 }
-function PatternProperties(doc,path){
-  SchemaCollection.call(this,doc,path); 
+function PatternProperties(doc){
+  SchemaCollection.call(this,doc); 
   this.nodeType = 'PatternProperties';
 }
 inherit(Definitions, SchemaCollection);
@@ -419,16 +380,16 @@ inherit(Properties, SchemaCollection);
 inherit(PatternProperties, SchemaCollection);
 
 
-function AllOf(doc,path){
-  SchemaArray.call(this,doc,path);
+function AllOf(doc){
+  SchemaArray.call(this,doc);
   this.nodeType = 'AllOf';
 }
-function AnyOf(doc,path){
-  SchemaArray.call(this,doc,path);
+function AnyOf(doc){
+  SchemaArray.call(this,doc);
   this.nodeType = 'AnyOf';
 }
-function OneOf(doc,path){
-  SchemaArray.call(this,doc,path);
+function OneOf(doc){
+  SchemaArray.call(this,doc);
   this.nodeType = 'OneOf';
 }
 inherit(AllOf, SchemaArray);
@@ -436,19 +397,19 @@ inherit(AnyOf, SchemaArray);
 inherit(OneOf, SchemaArray);
 
 
-function Not(doc,path){
-  Schema.call(this,doc,path);
+function Not(doc){
+  Schema.call(this,doc);
   this.nodeType = 'Not';
 }
 inherit(Not, Schema);
 
 
-function AdditionalProperties(doc,path){
-  SchemaBoolean.call(this,doc,path);
+function AdditionalProperties(doc){
+  SchemaBoolean.call(this,doc);
   this.nodeType = 'AdditionalProperties';
 }
-function AdditionalItems(doc,path){
-  SchemaBoolean.call(this,doc,path);
+function AdditionalItems(doc){
+  SchemaBoolean.call(this,doc);
   this.nodeType = 'AdditionalItems';
 }
 inherit(AdditionalProperties,SchemaBoolean);
@@ -457,8 +418,8 @@ inherit(AdditionalItems,SchemaBoolean);
 
 // custom node classes
 
-function Type(doc,path){
-  Node.call(this,doc,path);
+function Type(doc){
+  Node.call(this,doc);
   this.nodeType = 'Type';
   this._values = [];
 }
@@ -468,7 +429,6 @@ Type.prototype.parse = function(val){
   this.isArray = type(val) == 'array';
   var self = this;
   if (this.isArray){
-    this.dereference(val);
     each(val, function(t,i){
       if (self.isReference(t)) return;
       self.set(t);
@@ -497,8 +457,8 @@ Type.prototype.has = function(i){
 }
 
 
-function Items(doc,path){
-  Node.call(this,doc,path);
+function Items(doc){
+  Node.call(this,doc);
   this.nodeType = 'Items';
   this._items = [];
 }
@@ -508,7 +468,6 @@ Items.prototype.parse = function(obj){
   this.isArray = type(obj) == 'array';
   var self = this;
   if (this.isArray){
-    this.dereference(obj);
     each(obj, function(s,i){
       if (self.isReference(s)) return;
       self.addSchema(s);
@@ -537,22 +496,20 @@ Items.prototype.has = function(i){
 }
 
 Items.prototype.addSchema = function(obj){
-  var path = [this.path,this._items.length].join('/');
-  var schema = new Schema(this.document,path).parse(obj);
+  var schema = new Schema(this.document).parse(obj);
   this.set(schema);
 }
 
 
 
-function Dependencies(doc,path){
-  Node.call(this,doc,path);
+function Dependencies(doc){
+  Node.call(this,doc);
   this.nodeType = 'Dependencies';
   this._deps = {};
 }
 inherit(Dependencies,Node);
 
 Dependencies.prototype.parse = function(obj){
-  this.dereference(obj);
   var self = this;
   each(obj, function(key,val){
     if (self.isReference(val)) return;
@@ -578,14 +535,13 @@ Dependencies.prototype.each = function(fn){
 }
 
 Dependencies.prototype.addDependency = function(key,val){
-  var path = [this.path,key].join('/')
-  var dep = new Dependency(this.document, path).parse(val);
+  var dep = new Dependency(this.document).parse(val);
   this.set(key,dep);
 }
 
 
-function Dependency(doc,path){
-  Node.call(this,doc,path);
+function Dependency(doc){
+  Node.call(this,doc);
   this.nodeType = 'Dependency';
   this._values = [];
   this._schema = undefined;
@@ -597,7 +553,7 @@ Dependency.prototype.parse = function(obj){
   if (this.isArray){
     this._values = obj;
   } else {
-    var schema = new Schema(doc,path).parse(obj);
+    var schema = new Schema(doc).parse(obj);
     this._schema = schema;
   }
 }
