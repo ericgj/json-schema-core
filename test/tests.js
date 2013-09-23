@@ -190,25 +190,41 @@ describe('json-schema-core', function(){
 
   describe('dereference paths, local', function(){
 
+    function dereference(doc,fn){
+      doc.once('ready', fn);
+      doc.dereference();
+    }
+
     beforeEach(function(){
       this.document = new Document().parse(fixtures.deref.paths);
       this.subject = this.document.root();
     })
 
-    it('should parse', function(){ 
-      console.log("document: %o", this.document);
+    it('should parse', function(done){ 
+      var doc = this.document
+      dereference(doc, function(){
+        console.log("document: %o", doc);
+        done();
+      })
     })
 
-    it('should dereference back-references', function(){
-      var act = this.subject.get('properties').get('back').get('type').get()
-      assert(act == 'string');
-      act = this.subject.get('properties').get('self')
-      assert(act === this.subject);
+    it('should dereference back-references', function(done){
+      var doc = this.document, subj = this.subject
+      dereference(doc, function(){
+        var act = subj.get('properties').get('back').get('type').get()
+        assert(act == 'string');
+        act = subj.get('properties').get('self')
+        assert(act === subj);
+        done();
+      })
     })
 
     it('should dereference forward-references', function(){
-      var act = this.subject.get('definitions').get('forward').get('type').get()
-      assert(act == 'string');
+      var doc = this.document, subj = this.subject
+      dereference(doc, function(){
+        var act = subj.get('definitions').get('forward').get('type').get()
+        assert(act == 'string');
+      })
     })
 
   })

@@ -1,6 +1,7 @@
 var each = require('each')
   , type = require('type')
   , inherit = require('inherit')
+  , Emitter = require('emitter')
   , has = Object.hasOwnProperty
 
 var Correlation = require('./correlation')
@@ -56,10 +57,13 @@ Node.prototype.isReference = function(obj){
 ///////
 // core classes
 
-function Document(uri,service){
+function Document(agent){
+  this.agent = agent;
   this._root = undefined;
   this._refs = undefined; 
 }
+
+Document.prototype = new Emitter();
 
 Document.prototype.root = function(){
   return this._root;
@@ -69,7 +73,6 @@ Document.prototype.parse = function(obj){
   this._refs = new References(obj);
   this._root = new Schema(this);
   this._root.parse(obj);
-  this.dereference();
   return this;
 }
 
@@ -93,21 +96,65 @@ Document.prototype.getPath = function(path){
   return root.getPath(path);
 }
 
-// TODO rethrow error if parent node not found
-Document.prototype.dereference = function(){
+Document.prototype.dereference = function(fn){
   var refs = this._refs
     , self = this
   if (!refs) return;
+  if (fn) this.once('ready', fn);
+  var remotes = []
   refs.eachReferrer( function(from,target){
-    var ref = self.$(target)  // try inline dereference by URI or JSON pointer 
-    if (ref) {
-      var parts = from.split('/')
-        , key = parts.pop()
-        , parent = self.getPath(parts.join('/'))
-      parent.set(key, ref);
-    }
+    inlineDereference.call(self,from,target) || 
+      remotes.push([from,target]);
   })
+  if (remotes.length == 0) {
+    self.emit('ready');
+  } else {
+    while (remotes.length){
+      var next = remotes.shift()
+      next.push(remotes.length == 0);
+      asyncDereference.apply(self,next);
+    }
+  }
 }
+
+function asyncDereference(from,uri,last){
+  var self = this, agent = this.agent
+  agent.get(uri, function(err,obj){
+    if (err){
+      self.emit('error', err);
+      return;
+    }
+
+    setPath.call(self,from,obj);
+    if (last) self.emit('ready');
+
+  })
+
+    /* do this within agent.get() 
+      var doc = new Document(agent).parse(raw);
+      doc.once('ready', function(){
+        var obj = fragment ? doc.$(fragment) : doc.root();
+        fn(undefined,obj,raw);
+      })
+      doc.dereference();
+    */
+}
+
+//TODO rethrow error if parent not found?
+function setPath(path,ref){
+  var parts = path.split('/')
+    , key = parts.pop()
+    , parent = this.getPath(parts.join('/'))
+  parent && parent.set(key,ref);
+}
+
+function inlineDereference(from,target,doc){
+  doc = doc || this;
+  var ref = this.$(target)  // try inline dereference by URI or JSON pointer 
+  if (ref) setPath.call(this,from,ref);
+  return (!!ref);
+}
+
 
 
 function Schema(doc){
