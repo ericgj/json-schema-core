@@ -1,11 +1,9 @@
 var each = require('each')
   , type = require('type')
   , inherit = require('inherit')
-  , Emitter = require('emitter')
   , has = Object.hasOwnProperty
 
 var Correlation = require('./correlation')
-  , References = require('./refs')
 
 module.exports = {
   Document: Document,
@@ -57,36 +55,21 @@ Node.prototype.isReference = function(obj){
 ///////
 // core classes
 
-function Document(agent){
-  this.agent = agent;
+function Document(){
   this._root = undefined;
-  this._refs = undefined; 
 }
-
-Document.prototype = new Emitter();
 
 Document.prototype.root = function(){
   return this._root;
 }
 
 Document.prototype.parse = function(obj){
-  this._refs = new References(obj);
   this._root = new Schema(this);
   this._root.parse(obj);
   return this;
 }
 
-Document.prototype.$ =
-Document.prototype.fragment = function(key){
-  return this.getId(key) || this.getPath(key.toString());
-}
-
-// note id should be a canonical uri (object or string)
-Document.prototype.getId   = function(id){
-  var refs = this._refs;
-  if (!refs) return;
-  var path = refs.getReferent(id);
-  if (!path) return;
+Document.prototype.$  = function(path){
   return this.getPath(path);
 }
 
@@ -94,65 +77,6 @@ Document.prototype.getPath = function(path){
   var root = this.root();
   if (!root) return;
   return root.getPath(path);
-}
-
-Document.prototype.dereference = function(fn){
-  var refs = this._refs
-    , self = this
-  if (!refs) return;
-  if (fn) this.once('ready', fn);
-  var remotes = []
-  refs.eachReferrer( function(from,target){
-    inlineDereference.call(self,from,target) || 
-      remotes.push([from,target]);
-  })
-  if (remotes.length == 0) {
-    self.emit('ready');
-  } else {
-    while (remotes.length){
-      var next = remotes.shift()
-      next.push(remotes.length == 0);
-      asyncDereference.apply(self,next);
-    }
-  }
-}
-
-function asyncDereference(from,uri,last){
-  var self = this, agent = this.agent
-  agent.get(uri, function(err,obj){
-    if (err){
-      self.emit('error', err);
-      return;
-    }
-
-    setPath.call(self,from,obj);
-    if (last) self.emit('ready');
-
-  })
-
-    /* do this within agent.get() 
-      var doc = new Document(agent).parse(raw);
-      doc.once('ready', function(){
-        var obj = fragment ? doc.$(fragment) : doc.root();
-        fn(undefined,obj,raw);
-      })
-      doc.dereference();
-    */
-}
-
-//TODO rethrow error if parent not found?
-function setPath(path,ref){
-  var parts = path.split('/')
-    , key = parts.pop()
-    , parent = this.getPath(parts.join('/'))
-  parent && parent.set(key,ref);
-}
-
-function inlineDereference(from,target,doc){
-  doc = doc || this;
-  var ref = this.$(target)  // try inline dereference by URI or JSON pointer 
-  if (ref) setPath.call(this,from,ref);
-  return (!!ref);
 }
 
 
@@ -204,22 +128,6 @@ Schema.prototype.property = function(key){
   return this._properties[key];
 }
 
-Schema.prototype.allOf = function(){
-  var schemas = [].slice.call(arguments,0);
-  if (!this.get('allOf')) this.addCondition('allOf',[],AllOf);
-  var allof = this.get('allOf')
-  for (var i=0;i<schemas.length;++i) allof.set(schemas[i]);
-  return this;
-}
-
-Schema.prototype.union = function(){
-  var schemas = [].slice.call(arguments,0);
-  schemas.unshift(this);
-  var schema = new Schema(); // not bound to document
-  schema.allOf.apply(schema,schemas);
-  return schema;
-}
-
 // mix in each binding method into a Correlation object
 Schema.prototype.bind = function(instance){
   var ret = new Correlation(this,instance);
@@ -231,12 +139,6 @@ Schema.prototype.bind = function(instance){
 }
 
 // Schema class methods
-
-Schema.allOf = function(){
-  var args = [].slice.call(arguments,0)
-  var s = new Schema()
-  return s.allOf.apply(s,args);
-}
 
 Schema.getType = function(prop){ 
   return this._types[prop];

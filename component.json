@@ -8,8 +8,7 @@
     "ericgj/json-schema-uri": "*",
     "component/each": "*",  
     "component/type": "*",
-    "component/inherit": "*",
-    "component/emitter": "*"
+    "component/inherit": "*"
   },
   "development": {
     "timoxley/assert": "*"  

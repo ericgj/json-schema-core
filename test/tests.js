@@ -188,46 +188,6 @@ describe('json-schema-core', function(){
 
   })
 
-  describe('dereference paths, local', function(){
-
-    function dereference(doc,fn){
-      doc.once('ready', fn);
-      doc.dereference();
-    }
-
-    beforeEach(function(){
-      this.document = new Document().parse(fixtures.deref.paths);
-      this.subject = this.document.root();
-    })
-
-    it('should parse', function(done){ 
-      var doc = this.document
-      dereference(doc, function(){
-        console.log("document: %o", doc);
-        done();
-      })
-    })
-
-    it('should dereference back-references', function(done){
-      var doc = this.document, subj = this.subject
-      dereference(doc, function(){
-        var act = subj.get('properties').get('back').get('type').get()
-        assert(act == 'string');
-        act = subj.get('properties').get('self')
-        assert(act === subj);
-        done();
-      })
-    })
-
-    it('should dereference forward-references', function(){
-      var doc = this.document, subj = this.subject
-      dereference(doc, function(){
-        var act = subj.get('definitions').get('forward').get('type').get()
-        assert(act == 'string');
-      })
-    })
-
-  })
 
   describe('binding', function(){
    
@@ -298,35 +258,6 @@ describe('json-schema-core', function(){
 
   })
 
-  describe('schema union', function(){
-
-    beforeEach( function(){
-      this.s1 = new Schema().parse(fixtures.parse.simple);
-      this.s2 = new Schema().parse(fixtures.parse.properties);
-      this.s3 = new Schema().parse(fixtures.parse.type);
-      this.subject = new Schema()
-    })
-
-    it('should return new schema with the current schema plus all passed schemas within allOf', function(){
-      var act = this.subject.union(this.s1,this.s2,this.s3); 
-      console.log('schema union: %o', act);
-      var allOf = act.get('allOf');
-      assert(allOf);
-      var n=0; allOf.each(function(){ n++; });
-      assert(4 == n);
-    })
-
-    it('should construct new union schema from Schema.allOf', function(){
-      var act = Schema.allOf(this.s1,this.s2,this.s3);
-      console.log('Schema allOf: %o', act);
-      var allOf = act.get('allOf');
-      assert(allOf);
-      var n=0; allOf.each(function(){ n++; });
-      assert(3 == n);
-    })
-
-  })
-
 })
 
 
@@ -372,18 +303,6 @@ fixtures.search.all = {
   },
   properties: {
     one: { oneOf: [ { type: 'string' }, { type: 'boolean' } ] }
-  }
-}
-
-fixtures.deref = {};
-fixtures.deref.paths = {
-  definitions: {
-    forward: { '$ref': '#/definitions/string'},
-    string: { type: 'string' }
-  },
-  properties: {
-    back: {'$ref': '#/definitions/string'},
-    self: {'$ref': '#'}
   }
 }
 
