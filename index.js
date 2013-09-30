@@ -54,6 +54,10 @@ Node.prototype.root = function(){
   else { return this.parent.root(); }
 }
 
+Node.prototype.ref = function(uri){
+  return this._refs.get(uri);
+}
+
 Node.prototype.eachRef = function(fn){
   this._refs.each( fn );
 }
@@ -115,7 +119,7 @@ Schema.prototype.parse = function(obj){
   each(obj, function(key,val){
     if (val == 'id') return;
     var ref = refOf(val)
-    if (ref) { this.addRef(ref,key); return; }
+    if (ref) { self.addRef(ref,key); return; }
     var klass = Schema.getType(key);
     if (klass){
       self.addCondition(key,val,klass);
@@ -217,7 +221,7 @@ SchemaCollection.prototype.parse = function(obj){
   var self = this;
   each(obj, function(key,val){
     var ref = refOf(val)
-    if (ref) { this.addRef(ref,key); return; }
+    if (ref) { self.addRef(ref,key); return; }
     self.addSchema(key,val);
   })
   return this;
@@ -256,7 +260,7 @@ SchemaArray.prototype.parse = function(obj){
   var self = this;
   each(obj, function(val,i){
     var ref = refOf(val)
-    if (ref) { this.addRef(ref,i); return; }
+    if (ref) { self.addRef(ref,i); return; }
     self.addSchema(val);
   })
   return this;
@@ -405,7 +409,7 @@ Type.prototype.parse = function(val){
   if (this.isArray){
     each(val, function(t,i){
       var ref = refOf(val)
-      if (ref) { this.addRef(ref,i); return; }
+      if (ref) { self.addRef(ref,i); return; }
       self.set(t);
     })
   } else {
@@ -445,7 +449,7 @@ Items.prototype.parse = function(obj){
   if (this.isArray){
     each(obj, function(s,i){
       var ref = refOf(val)
-      if (ref) { this.addRef(ref,i); return; }
+      if (ref) { self.addRef(ref,i); return; }
       self.addSchema(s);
     })
   } else {
@@ -489,7 +493,7 @@ Dependencies.prototype.parse = function(obj){
   var self = this;
   each(obj, function(key,val){
     var ref = refOf(val)
-    if (ref) { this.addRef(ref,key); return; }
+    if (ref) { self.addRef(ref,key); return; }
     self.addDependency(key,val);
   })
   return this;

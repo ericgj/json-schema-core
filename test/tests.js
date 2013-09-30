@@ -162,7 +162,95 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('scoping', function(){
+    
+    beforeEach(function(){
+      this.subject = new Schema().parse(fixtures.scoping.all);
+    })
 
+    it('should set the top-level scope based on id', function(){
+      assert(fixtures.scoping.all.id);
+      assert(fixtures.scoping.all.id == this.subject.scope());
+    })
+
+    it('scope of non-schema subnodes should be nearest parent scope', function(){
+      assert(fixtures.scoping.all.id == this.subject.get('properties').scope());
+      assert('http://my.site/schema1' == this.subject.get('properties').get('path').get('properties').scope());
+    })
+
+    it('if no id specified, scope of schema subnodes should be nearest parent scope', function(){
+      assert('http://my.site/myschema#fragment' == this.subject.get('properties').get('fragment').get('items').scope());
+    })
+
+    it('if id specified as URI fragment, scope of schema should be correctly joined to nearest parent scope', function(){
+      assert('http://my.site/myschema#fragment' == this.subject.get('properties').get('fragment').scope());
+    })
+
+    it('if id specified as URI path, scope of schema should be correctly joined to nearest parent scope', function(){
+      assert('http://my.site/schema1' == this.subject.get('properties').get('path').scope());
+    })
+
+    it('if id specified as full URI, scope of schema should be the given URI', function(){
+      assert('http://my.site/another/schema#' == this.subject.get('properties').get('full').scope());
+    })
+
+  })
+
+  // this is a bit internal, maybe should be redone using Node#eachRef, but it's easier testing this way
+  describe('references', function(){
+
+    function setupSchema(key){
+      return new Schema().parse(fixtures.refs[key]);
+    }
+ 
+    it('should store URI fragment reference scoped to the schema', function(){
+      this.subject = setupSchema('two');
+      console.log('subject references: %o', this.subject);
+      var ref = this.subject.ref('http://my.site/myschema#inner');
+      assert(ref);
+    })
+
+    it('should store URI path reference scoped to the schema', function(){
+      this.subject = setupSchema('one');
+      assert( this.subject.ref('http://my.site/schema1'));
+    })
+
+    it('if no top-level id, should store URI path reference as-is', function(){
+      this.subject = setupSchema('noid');
+      assert( this.subject.ref('schema1'));
+    })
+
+    it('if no top-level id, should store URI fragment reference as-is', function(){
+      this.subject = setupSchema('noid');
+      assert( this.subject.ref('#/definitions/schema2'));
+    })
+
+    it('for forward reference, should store reference as array of node and key to be dereferenced', function(){
+      this.subject = setupSchema('two');
+      var ref = this.subject.ref('http://my.site/myschema#inner');
+      assert(this.subject == ref[0]);
+      assert('not' == ref[1]);
+    })
+
+    it('for backwards reference, should store reference as array of node and key to be dereferenced', function(){
+      this.subject = setupSchema('one');
+      var ref = this.subject.ref('http://my.site/schema1');
+      assert(this.subject.get('definitions').get('schema2') == ref[0]);
+      assert('items' == ref[1]);
+    })
+
+    it('if no top-level id, should store references as array of node and key to be dereferenced', function(){
+      this.subject = setupSchema('noid');
+      var ref = this.subject.ref('schema1');
+      assert(this.subject.get('definitions').get('schema2') == ref[0]);
+      assert('items' == ref[1]);
+      ref = this.subject.ref('#/definitions/schema2');
+      assert(this.subject == ref[0]);
+      assert('not' == ref[1]);
+    })
+
+  })
+  
   describe('binding', function(){
    
     function bindTo(sch,inst){
@@ -279,6 +367,72 @@ fixtures.search.all = {
     one: { oneOf: [ { type: 'string' }, { type: 'boolean' } ] }
   }
 }
+
+fixtures.scoping = {};
+fixtures.scoping.all = {
+  id: "http://my.site/myschema#",
+  properties: {
+    fragment: {
+      id: "#fragment",
+      type: "array",
+      items: { }
+    },
+    path: {
+      id: "schema1",
+      type: "object",
+      properties: { 
+        id: { type: "integer" }  
+      }
+    },
+    full: {
+      id: "http://my.site/another/schema#",
+      type: "object",
+      properties: { }
+    }
+  }
+}
+
+
+fixtures.refs = {};
+fixtures.refs.one = {
+  id: "http://my.site/myschema#",
+  definitions: {
+    schema1: {
+      id: "schema1",
+      type: "integer"
+    },
+    schema2: {
+      type: "array",
+      items: { "$ref": "schema1" }
+    }
+  }
+}
+
+fixtures.refs.two = {
+  id: "http://my.site/myschema#",
+  not: { "$ref": "#inner" },
+  definitions: {
+    schema1: {
+      id: "#inner",
+      type: "boolean"
+    }
+  }
+}
+
+fixtures.refs.noid = {
+  definitions: {
+    schema1: {
+      id: "schema1",
+      type: "integer"
+    },
+    schema2: {
+      type: "array",
+      items: { "$ref": "schema1" }
+    }
+  },
+  not: { "$ref": "#/definitions/schema2" }
+}
+
 
   
 fixtures.correlate = {};

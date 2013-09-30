@@ -18,6 +18,11 @@ Refs.prototype.eachRef = function(fn){
   each(this._refs, function(uri,pair){ fn(uri,pair[0],pair[1]); })
 }
 
+Refs.prototype.get =
+Refs.prototype.getRef = function(uri){
+  return this._refs[uri.toString()];
+}
+
 Refs.prototype.addScope = function(uri,node){
   this._scopes[uri.toString()] = node;
 }
