@@ -1,12 +1,12 @@
 var each = require('each')
   , type = require('type')
   , inherit = require('inherit')
+  , Uri = require('json-schema-uri')
   , has = Object.hasOwnProperty
 
 var Correlation = require('./correlation')
 
 module.exports = {
-  Document: Document,
   Node: Node,
   Schema: Schema,
   SchemaCollection: SchemaCollection,
@@ -18,28 +18,72 @@ module.exports = {
 
 
 ///////
-// abstract base class
+// abstract base class, mostly
 
-function Node(doc){
- this.document = doc || this;
+function Node(parent){
+ this.parent = parent;
  this.nodeType = 'Node';
+ this._scope = undefined;
+ this._refs = {};
+ this._scopes = {};
 }
+
 Node.prototype.parse = function(obj){} // subclass parse
 Node.prototype.get = function(key){}   // subclass property/element accessor
 Node.prototype.has = function(key){}
 Node.prototype.set = function(key,val){}  // setter
 Node.prototype.each = function(fn){} // iterator
 
-// shortcut
-Node.prototype.$ = function(key){ return this.getPath(key); }
+Node.prototype.scope = function(id){
+  var cur = this._scope || (this.parent && this.parent.scope()); 
+  if (arguments.length == 0) {
+    return cur; 
+  } else {
+    var uri = Uri(cur).join(id);
+    this._scope = uri.toString();
+    this.root()._scopes[this._scope] = this;
+  }
+}
+
+Node.prototype.root = function(){
+  if (!this.parent) { return this; }
+  else { return this.parent.root(); }
+}
+
+Node.prototype.eachRef = function(fn){
+  each(this.root()._refs, function(uri,pair){ 
+    fn(uri,pair[0],pair[1]); 
+  });
+}
+
+Node.prototype.addRef = function(ref,key){
+  var uri = Uri(this.scope()).join(ref)
+    , root = this.root()
+  root._refs[uri.toString()] = [this,key];
+}
+
+Node.prototype.$ = function(key){ 
+  var uri = Uri(this.scope()).join(key)
+  var ret = this.getId(uri)
+  if (ret) return ret;
+  var base = uri.base()
+    , fragment = uri.fragment()
+  var root = base ? this.getId(base) : this;
+  if (!root) return;
+  return root.getPath(fragment); 
+}
+
+Node.prototype.getId = function(uri){
+  return this.root()._scopes[uri.toString()];
+}
 
 // recursive get via (absolute or relative) path
 Node.prototype.getPath = function(path){
   var segs = path.split('/')
     , seg = segs.shift()
     , path = segs.join('/')
-  if (0 == seg.length) return this;
-  if ('#' == seg) return this.document.getPath(path); // '#' == this.document
+  if (0 == seg.length && 0 == segs.length) return this;
+  if ('#' == seg) return this.root().getPath(path); 
   if (!this.has(seg)) return; // or throw error ?
   if (0 == path.length){
     return this.get(seg);
@@ -48,41 +92,16 @@ Node.prototype.getPath = function(path){
   }
 }
 
-Node.prototype.isReference = function(obj){
+function refOf(obj){
   return ("object"==type(obj) && obj['$ref']);
 }
 
 ///////
 // core classes
 
-function Document(){
-  this._root = undefined;
-}
 
-Document.prototype.root = function(){
-  return this._root;
-}
-
-Document.prototype.parse = function(obj){
-  this._root = new Schema(this);
-  this._root.parse(obj);
-  return this;
-}
-
-Document.prototype.$  = function(path){
-  return this.getPath(path);
-}
-
-Document.prototype.getPath = function(path){
-  var root = this.root();
-  if (!root) return;
-  return root.getPath(path);
-}
-
-
-
-function Schema(doc){
-  Node.call(this,doc);
+function Schema(parent){
+  Node.call(this,parent);
   this.nodeType = 'Schema';
   this._properties = {};
   this._conditions = {};
@@ -90,9 +109,12 @@ function Schema(doc){
 inherit(Schema,Node);
 
 Schema.prototype.parse = function(obj){
+  if (has.call(obj,'id')) this.scope(obj.id);
   var self = this;
   each(obj, function(key,val){
-    if (self.isReference(val)) return;
+    if (val == 'id') return;
+    var ref = refOf(val)
+    if (ref) { this.addRef(ref,key); return; }
     var klass = Schema.getType(key);
     if (klass){
       self.addCondition(key,val,klass);
@@ -120,7 +142,7 @@ Schema.prototype.each = function(fn){
 }
 
 Schema.prototype.addCondition = function(key,val,klass){
-  var condition = new klass(this.document).parse(val);
+  var condition = new klass(this).parse(val);
   this.set(key,condition);
 }
 
@@ -183,8 +205,8 @@ Schema.use(base);
 ///////
 // base node parse classes
 
-function SchemaCollection(doc){
-  Node.call(this,doc);
+function SchemaCollection(parent){
+  Node.call(this,parent);
   this.nodeType = 'SchemaCollection';
   this._schemas = {};
 }
@@ -193,7 +215,8 @@ inherit(SchemaCollection,Node);
 SchemaCollection.prototype.parse = function(obj){
   var self = this;
   each(obj, function(key,val){
-    if (self.isReference(val)) return;
+    var ref = refOf(val)
+    if (ref) { this.addRef(ref,key); return; }
     self.addSchema(key,val);
   })
   return this;
@@ -216,13 +239,13 @@ SchemaCollection.prototype.each = function(fn){
 }
 
 SchemaCollection.prototype.addSchema = function(key,val){
-  var schema = new Schema(this.document).parse(val);
+  var schema = new Schema(this).parse(val);
   this.set(key,schema);
 }
 
 
-function SchemaArray(doc){
-  Node.call(this,doc);
+function SchemaArray(parent){
+  Node.call(this,parent);
   this.nodeType = 'SchemaArray';
   this._schemas = [];
 }
@@ -231,7 +254,8 @@ inherit(SchemaArray,Node);
 SchemaArray.prototype.parse = function(obj){
   var self = this;
   each(obj, function(val,i){
-    if (self.isReference(val)) return;
+    var ref = refOf(val)
+    if (ref) { this.addRef(ref,i); return; }
     self.addSchema(val);
   })
   return this;
@@ -254,12 +278,12 @@ SchemaArray.prototype.each = function(fn){
 }
 
 SchemaArray.prototype.addSchema = function(val){
-  var schema = new Schema(this.document).parse(val);
+  var schema = new Schema(this).parse(val);
   this.set(schema);
 }
 
-function SchemaBoolean(doc){
-  Node.call(this,doc);
+function SchemaBoolean(parent){
+  Node.call(this,parent);
   this.nodeType = 'SchemaBoolean';
   this._schema = undefined;
   this._value = false;
@@ -302,7 +326,7 @@ SchemaBoolean.prototype.addValue = function(val){
 }
 
 SchemaBoolean.prototype.addSchema = function(obj){
-  var schema = new Schema(this.document).parse(obj);
+  var schema = new Schema(this).parse(obj);
   this.set(schema);
 }
 
@@ -312,16 +336,16 @@ SchemaBoolean.prototype.addSchema = function(obj){
 ///////
 // concrete node parse classes
 
-function Definitions(doc){ 
-  SchemaCollection.call(this,doc); 
+function Definitions(parent){ 
+  SchemaCollection.call(this,parent); 
   this.nodeType = 'Definitions';
 }
-function Properties(doc){
-  SchemaCollection.call(this,doc); 
+function Properties(parent){
+  SchemaCollection.call(this,parent); 
   this.nodeType = 'Properties';
 }
-function PatternProperties(doc){
-  SchemaCollection.call(this,doc); 
+function PatternProperties(parent){
+  SchemaCollection.call(this,parent); 
   this.nodeType = 'PatternProperties';
 }
 inherit(Definitions, SchemaCollection);
@@ -329,16 +353,16 @@ inherit(Properties, SchemaCollection);
 inherit(PatternProperties, SchemaCollection);
 
 
-function AllOf(doc){
-  SchemaArray.call(this,doc);
+function AllOf(parent){
+  SchemaArray.call(this,parent);
   this.nodeType = 'AllOf';
 }
-function AnyOf(doc){
-  SchemaArray.call(this,doc);
+function AnyOf(parent){
+  SchemaArray.call(this,parent);
   this.nodeType = 'AnyOf';
 }
-function OneOf(doc){
-  SchemaArray.call(this,doc);
+function OneOf(parent){
+  SchemaArray.call(this,parent);
   this.nodeType = 'OneOf';
 }
 inherit(AllOf, SchemaArray);
@@ -346,19 +370,19 @@ inherit(AnyOf, SchemaArray);
 inherit(OneOf, SchemaArray);
 
 
-function Not(doc){
-  Schema.call(this,doc);
+function Not(parent){
+  Schema.call(this,parent);
   this.nodeType = 'Not';
 }
 inherit(Not, Schema);
 
 
-function AdditionalProperties(doc){
-  SchemaBoolean.call(this,doc);
+function AdditionalProperties(parent){
+  SchemaBoolean.call(this,parent);
   this.nodeType = 'AdditionalProperties';
 }
-function AdditionalItems(doc){
-  SchemaBoolean.call(this,doc);
+function AdditionalItems(parent){
+  SchemaBoolean.call(this,parent);
   this.nodeType = 'AdditionalItems';
 }
 inherit(AdditionalProperties,SchemaBoolean);
@@ -367,8 +391,8 @@ inherit(AdditionalItems,SchemaBoolean);
 
 // custom node classes
 
-function Type(doc){
-  Node.call(this,doc);
+function Type(parent){
+  Node.call(this,parent);
   this.nodeType = 'Type';
   this._values = [];
 }
@@ -379,7 +403,8 @@ Type.prototype.parse = function(val){
   var self = this;
   if (this.isArray){
     each(val, function(t,i){
-      if (self.isReference(t)) return;
+      var ref = refOf(val)
+      if (ref) { this.addRef(ref,i); return; }
       self.set(t);
     })
   } else {
@@ -406,8 +431,8 @@ Type.prototype.has = function(i){
 }
 
 
-function Items(doc){
-  Node.call(this,doc);
+function Items(parent){
+  Node.call(this,parent);
   this.nodeType = 'Items';
   this._items = [];
 }
@@ -418,7 +443,8 @@ Items.prototype.parse = function(obj){
   var self = this;
   if (this.isArray){
     each(obj, function(s,i){
-      if (self.isReference(s)) return;
+      var ref = refOf(val)
+      if (ref) { this.addRef(ref,i); return; }
       self.addSchema(s);
     })
   } else {
@@ -445,14 +471,14 @@ Items.prototype.has = function(i){
 }
 
 Items.prototype.addSchema = function(obj){
-  var schema = new Schema(this.document).parse(obj);
+  var schema = new Schema(this).parse(obj);
   this.set(schema);
 }
 
 
 
-function Dependencies(doc){
-  Node.call(this,doc);
+function Dependencies(parent){
+  Node.call(this,parent);
   this.nodeType = 'Dependencies';
   this._deps = {};
 }
@@ -461,7 +487,8 @@ inherit(Dependencies,Node);
 Dependencies.prototype.parse = function(obj){
   var self = this;
   each(obj, function(key,val){
-    if (self.isReference(val)) return;
+    var ref = refOf(val)
+    if (ref) { this.addRef(ref,key); return; }
     self.addDependency(key,val);
   })
   return this;
@@ -484,13 +511,13 @@ Dependencies.prototype.each = function(fn){
 }
 
 Dependencies.prototype.addDependency = function(key,val){
-  var dep = new Dependency(this.document).parse(val);
+  var dep = new Dependency(this).parse(val);
   this.set(key,dep);
 }
 
 
-function Dependency(doc){
-  Node.call(this,doc);
+function Dependency(parent){
+  Node.call(this,parent);
   this.nodeType = 'Dependency';
   this._values = [];
   this._schema = undefined;

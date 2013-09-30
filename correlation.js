@@ -21,7 +21,9 @@ function Correlation(schema,instance){
 */
   
 Correlation.prototype.subschema = function(prop){
-  return this.schema.$(['properties',prop].join('/'));
+  var props = this.schema.get('properties') 
+  if (!props) return;
+  return props.get(prop);
 }
 
 Correlation.prototype.get = function(prop){
