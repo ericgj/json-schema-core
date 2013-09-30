@@ -203,50 +203,73 @@ describe('json-schema-core', function(){
       return new Schema().parse(fixtures.refs[key]);
     }
  
+    function findRef(u){
+      var found
+      this.eachRef( function(uri,node,key){
+        if (!found && u == uri) found = [node,key];
+      })
+      return found;
+    }
+    
+    function selectRefs(u){
+      var found = []
+      this.eachRef( function(uri,node,key){
+        if (u == uri) found.push([node,key]);
+      })
+      return found;
+    }
+
     it('should store URI fragment reference scoped to the schema', function(){
       this.subject = setupSchema('two');
       console.log('subject references: %o', this.subject);
-      var ref = this.subject.ref('http://my.site/myschema#inner');
+      var ref = findRef.call(this.subject,'http://my.site/myschema#inner');
       assert(ref);
     })
 
     it('should store URI path reference scoped to the schema', function(){
       this.subject = setupSchema('one');
-      assert( this.subject.ref('http://my.site/schema1'));
+      assert( findRef.call(this.subject, 'http://my.site/schema1') );
     })
 
     it('if no top-level id, should store URI path reference as-is', function(){
       this.subject = setupSchema('noid');
-      assert( this.subject.ref('schema1'));
+      assert( findRef.call(this.subject, 'schema1') );
     })
 
     it('if no top-level id, should store URI fragment reference as-is', function(){
       this.subject = setupSchema('noid');
-      assert( this.subject.ref('#/definitions/schema2'));
+      assert( findRef.call(this.subject, '#/definitions/schema2') );
     })
 
     it('for forward reference, should store reference as array of node and key to be dereferenced', function(){
       this.subject = setupSchema('two');
-      var ref = this.subject.ref('http://my.site/myschema#inner');
+      var ref = findRef.call(this.subject, 'http://my.site/myschema#inner');
       assert(this.subject == ref[0]);
       assert('not' == ref[1]);
     })
 
     it('for backwards reference, should store reference as array of node and key to be dereferenced', function(){
       this.subject = setupSchema('one');
-      var ref = this.subject.ref('http://my.site/schema1');
+      var ref = findRef.call(this.subject, 'http://my.site/schema1');
       assert(this.subject.get('definitions').get('schema2') == ref[0]);
       assert('items' == ref[1]);
     })
 
     it('if no top-level id, should store references as array of node and key to be dereferenced', function(){
       this.subject = setupSchema('noid');
-      var ref = this.subject.ref('schema1');
+      var ref = findRef.call(this.subject, 'schema1');
       assert(this.subject.get('definitions').get('schema2') == ref[0]);
       assert('items' == ref[1]);
-      ref = this.subject.ref('#/definitions/schema2');
+      ref = findRef.call(this.subject, '#/definitions/schema2');
       assert(this.subject == ref[0]);
       assert('not' == ref[1]);
+    })
+
+    it('should store multiple references', function(){
+      this.subject = setupSchema('multi');
+      console.log('subject references multi: %o', this.subject);
+      var refs = selectRefs.call(this.subject, 'http://my.site/schema1');
+      assert(refs.length == 2);
     })
 
   })
@@ -452,6 +475,23 @@ fixtures.refs.noid = {
     }
   },
   not: { "$ref": "#/definitions/schema2" }
+}
+
+fixtures.refs.multi = {
+  id: "http://my.site/myschema#",
+  definitions: {
+    schema0: {
+      type: "array",
+      items: { "$ref": "schema1" }
+    },
+    schema1: {
+      id: "schema1",
+      type: "integer"
+    }
+  },
+  properties: {
+    one: { "$ref": "schema1" }
+  }
 }
 
 

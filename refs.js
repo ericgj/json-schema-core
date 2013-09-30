@@ -6,23 +6,18 @@ module.exports = Refs;
 
 function Refs(){
   if (!(this instanceof Refs)) return new Refs();
-  this._refs = {}; this._scopes = {};
+  this._refs = []; this._scopes = {};
   return this;
 }
 
 Refs.prototype.add = 
 Refs.prototype.addRef = function(uri,node,key){
-  this._refs[uri.toString()] = [node,key];
+  this._refs.push([uri.toString(),node,key]);
 }
 
 Refs.prototype.each = 
 Refs.prototype.eachRef = function(fn){
-  each(this._refs, function(uri,pair){ fn(uri,pair[0],pair[1]); })
-}
-
-Refs.prototype.get =
-Refs.prototype.getRef = function(uri){
-  return this._refs[uri.toString()];
+  each(this._refs, function(ref){ fn(ref[0],ref[1],ref[2]); })
 }
 
 Refs.prototype.addScope = function(uri,node){

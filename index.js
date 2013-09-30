@@ -54,10 +54,6 @@ Node.prototype.root = function(){
   else { return this.parent.root(); }
 }
 
-Node.prototype.ref = function(uri){
-  return this._refs.get(uri);
-}
-
 Node.prototype.eachRef = function(fn){
   this._refs.each( fn );
 }
