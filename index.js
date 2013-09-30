@@ -14,7 +14,6 @@ module.exports = {
   SchemaArray: SchemaArray,
   SchemaBoolean: SchemaBoolean,
   Correlation: Correlation,
-  Refs: Refs
 };
 
 
@@ -22,11 +21,11 @@ module.exports = {
 ///////
 // abstract base class, mostly
 
-function Node(parent,refs){
+function Node(parent){
  this.parent = parent;
  this.nodeType = 'Node';
  this._scope = undefined;
- this.refs = refs || (parent && parent.refs)
+ this.refs = (parent && parent.refs) || new Refs()
 }
 
 Node.prototype.parse = function(obj){} // subclass parse
@@ -98,8 +97,8 @@ function refOf(obj){
 // core classes
 
 
-function Schema(parent,refs){
-  Node.call(this,parent,refs);
+function Schema(parent){
+  Node.call(this,parent);
   this.nodeType = 'Schema';
   this._properties = {};
   this._conditions = {};
@@ -159,10 +158,6 @@ Schema.prototype.bind = function(instance){
 }
 
 // Schema class methods
-
-Schema.root = function(refs){
-  return new Schema(undefined,refs);
-}
 
 Schema.getType = function(prop){ 
   return this._types[prop];

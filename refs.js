@@ -1,19 +1,12 @@
 'use strict';
 
-var Emitter = require('emitter')
-  , Uri  = require('json-schema-uri')
-  , has  = Object.hasOwnProperty
-
 module.exports = Refs;
 
-function Refs(agent){
-  if (!(this instanceof Refs)) return new Refs(agent);
-  this.agent = agent;
+function Refs(){
+  if (!(this instanceof Refs)) return new Refs();
   this._refs = {}; this._scopes = {};
   return this;
 }
-
-Refs.prototype = new Emitter();
 
 Refs.prototype.add = 
 Refs.prototype.addRef = function(uri,node,key){
@@ -32,6 +25,8 @@ Refs.prototype.addScope = function(uri,node){
 Refs.prototype.getScope = function(uri){
   return this._scopes[uri.toString()];
 }
+
+/* TODO: move dereferencing elsewhere
 
 Refs.prototype.dereference = function(node,fn,remotes){
   var self = this
@@ -81,4 +76,4 @@ function asyncDereference(uri,node,key){
   })
 }
 
-
+*/
