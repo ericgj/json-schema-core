@@ -25,7 +25,7 @@ function Node(parent){
  this.parent = parent;
  this.nodeType = 'Node';
  this._scope = undefined;
- this.refs = (parent && parent.refs) || new Refs()
+ this._refs = (parent && parent.refs()) || new Refs()
 }
 
 Node.prototype.parse = function(obj){} // subclass parse
@@ -41,8 +41,12 @@ Node.prototype.scope = function(id){
   } else {
     var uri = Uri(cur).join(id);
     this._scope = uri.toString();
-    this.refs.addScope(this._scope,this);
+    this._refs.addScope(this._scope,this);
   }
+}
+
+Node.prototype.refs = function(){
+  return this._refs;
 }
 
 Node.prototype.root = function(){
@@ -51,12 +55,12 @@ Node.prototype.root = function(){
 }
 
 Node.prototype.eachRef = function(fn){
-  this.refs.each( fn );
+  this._refs.each( fn );
 }
 
 Node.prototype.addRef = function(ref,key){
   var uri = Uri(this.scope()).join(ref)
-  this.refs.add(uri.toString(),this,key);
+  this._refs.add(uri.toString(),this,key);
 }
 
 Node.prototype.$ = function(key){ 
@@ -71,7 +75,7 @@ Node.prototype.$ = function(key){
 }
 
 Node.prototype.getId = function(uri){
-  return this.refs.getScope(uri.toString());
+  return this._refs.getScope(uri.toString());
 }
 
 // recursive get via (absolute or relative) path
