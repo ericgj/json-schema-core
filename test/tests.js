@@ -320,6 +320,27 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('Schema union', function(){
+    
+    beforeEach( function(){
+      this.subject = [
+        new Schema().parse(fixtures.union.one),
+        new Schema().parse(fixtures.union.two),
+        new Schema().parse(fixtures.union.three)
+      ]
+    })
+
+    it('should construct schema with allOf condition', function(){
+      var act = Schema.union(this.subject)
+      console.log('subject Schema.union: %o', act);
+      assert(act.get('allOf'));
+      assert(act.get('allOf').get(0) == this.subject[0]);
+      assert(act.get('allOf').get(1) == this.subject[1]);
+      assert(act.get('allOf').get(2) == this.subject[2]);
+    })
+
+  })
+
 })
 
 
@@ -484,6 +505,29 @@ fixtures.instance.additional = {
     },
     three: "fellows",
     four: "sleep"
+  }
+}
+
+
+fixtures.union = {};
+fixtures.union.one = {
+  id: '#one',
+  properties: {
+    "one": { type: "string" }
+  }
+}
+
+fixtures.union.two = {
+  id: '#two',
+  properties: {
+    "two": { type: "integer" }
+  }
+}
+
+fixtures.union.three = {
+  id: '#three',
+  properties: {
+    "three": { type: "array" }
   }
 }
 

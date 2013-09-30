@@ -167,6 +167,17 @@ Schema.prototype.bind = function(instance){
 
 // Schema class methods
 
+Schema.union = 
+Schema.allOf = function(schemas){
+  var schema = new Schema()
+  schema.addCondition('allOf',[],AllOf);
+  var allOf = schema.get('allOf');
+  for (var i=0;i<schemas.length;++i){
+    allOf.set(schemas[i]);
+  }
+  return schema;
+}
+
 Schema.getType = function(prop){ 
   return this._types[prop];
 }
