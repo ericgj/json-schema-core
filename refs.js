@@ -1,3 +1,5 @@
+var each = require('each')
+
 'use strict';
 
 module.exports = Refs;
