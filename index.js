@@ -5,6 +5,7 @@ var each = require('each')
   , has = Object.hasOwnProperty
 
 var Correlation = require('./correlation')
+  , Refs = require('./refs')
 
 module.exports = {
   Node: Node,
@@ -12,7 +13,8 @@ module.exports = {
   SchemaCollection: SchemaCollection,
   SchemaArray: SchemaArray,
   SchemaBoolean: SchemaBoolean,
-  Correlation: Correlation
+  Correlation: Correlation,
+  Refs: Refs
 };
 
 
@@ -20,12 +22,11 @@ module.exports = {
 ///////
 // abstract base class, mostly
 
-function Node(parent){
+function Node(parent,refs){
  this.parent = parent;
  this.nodeType = 'Node';
  this._scope = undefined;
- this._refs = {};
- this._scopes = {};
+ this.refs = refs || (parent && parent.refs)
 }
 
 Node.prototype.parse = function(obj){} // subclass parse
@@ -41,7 +42,7 @@ Node.prototype.scope = function(id){
   } else {
     var uri = Uri(cur).join(id);
     this._scope = uri.toString();
-    this.root()._scopes[this._scope] = this;
+    this.refs.addScope(this._scope,this);
   }
 }
 
@@ -51,15 +52,12 @@ Node.prototype.root = function(){
 }
 
 Node.prototype.eachRef = function(fn){
-  each(this.root()._refs, function(uri,pair){ 
-    fn(uri,pair[0],pair[1]); 
-  });
+  this.refs.each( fn );
 }
 
 Node.prototype.addRef = function(ref,key){
   var uri = Uri(this.scope()).join(ref)
-    , root = this.root()
-  root._refs[uri.toString()] = [this,key];
+  this.refs.add(uri.toString(),this,key);
 }
 
 Node.prototype.$ = function(key){ 
@@ -74,7 +72,7 @@ Node.prototype.$ = function(key){
 }
 
 Node.prototype.getId = function(uri){
-  return this.root()._scopes[uri.toString()];
+  return this.refs.getScope(uri.toString());
 }
 
 // recursive get via (absolute or relative) path
@@ -100,8 +98,8 @@ function refOf(obj){
 // core classes
 
 
-function Schema(parent){
-  Node.call(this,parent);
+function Schema(parent,refs){
+  Node.call(this,parent,refs);
   this.nodeType = 'Schema';
   this._properties = {};
   this._conditions = {};
@@ -161,6 +159,10 @@ Schema.prototype.bind = function(instance){
 }
 
 // Schema class methods
+
+Schema.root = function(refs){
+  return new Schema(undefined,refs);
+}
 
 Schema.getType = function(prop){ 
   return this._types[prop];

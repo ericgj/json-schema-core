@@ -1,102 +1,84 @@
-var type = require('type')
-  , each = require('each')
+'use strict';
+
+var Emitter = require('emitter')
   , Uri  = require('json-schema-uri')
   , has  = Object.hasOwnProperty
 
-module.exports = References;
+module.exports = Refs;
 
-function References(obj){
-  if (!(this instanceof References)) return new References(obj);
-  this._referents = {}; this._referrers = {};
-  if (obj) this.parse(obj);
+function Refs(agent){
+  if (!(this instanceof Refs)) return new Refs(agent);
+  this.agent = agent;
+  this._refs = {}; this._scopes = {};
   return this;
 }
 
-References.prototype.parse = function(obj){
-  this._referents = {}; this._referrers = {};
-  traverse({'#': obj}, extract.bind(this));
+Refs.prototype = new Emitter();
+
+Refs.prototype.add = 
+Refs.prototype.addRef = function(uri,node,key){
+  this._refs[uri.toString()] = [node,key];
 }
 
-References.prototype.addReferent = function(uri,path){
-  this._referents[uri.toString()] = path;
+Refs.prototype.each = 
+Refs.prototype.eachRef = function(fn){
+  each(this._refs, function(uri,pair){ fn(uri,pair[0],pair[1]); })
 }
 
-References.prototype.addReferrer = function(path,uri){
-  this._referrers[path] = uri;
+Refs.prototype.addScope = function(uri,node){
+  this._scopes[uri.toString()] = node;
 }
 
-References.prototype.getReferent = function(uri){
-  return this._referents[uri.toString()];
+Refs.prototype.getScope = function(uri){
+  return this._scopes[uri.toString()];
 }
 
-References.prototype.getReferrer = function(path){
-  return this._referrers[path];
-}
+Refs.prototype.dereference = function(node,fn,remotes){
+  var self = this
+  remotes = remotes || [];
 
-References.prototype.eachReferent = function(fn){
-  each(this._referents, fn);
-}
-
-References.prototype.eachReferrer = 
-References.prototype.each = function(fn){
-  each(this._referrers, fn);
-}
-
-
-// private
-
-function extract(obj,key,ctx){
-  // console.log("context path, scopes: %s -> %s", ctx.path, ctx.uri.toString());
-  if (key == 'id'){
-    this.addReferent(ctx.uri, ctx.path);
+  if (fn){
+    this.once('ready', fn);
+    this.once('error', fn);
   }
-  var val = obj[key]
-  if (!val || !type(val == 'object')) return;
-  if (has.call(val,'$ref')){
-    this.addReferrer(ctx.childPath, ctx.uri.join(val['$ref']).toString() );
-  }
-}
-
-// utils
-
-function traverse(obj, ctx, fn){
-  if (arguments.length == 2){ 
-    fn = ctx; ctx = undefined;
-  }
-  ctx          = ctx || {};
-  ctx.segments = ctx.segments || [];
-  ctx.scopes   = ctx.scopes || [ Uri('') ];
-  ctx.uri      = ctx.scopes[ctx.scopes.length-1];
-  switch(type(obj)){
-    case 'array':
-    for (var i=0;i<obj.length;++i){
-      ctx.path     = ctx.segments.join('/');  // parent path
-      ctx.segments.push(i);
-      ctx.childPath = ctx.segments.join('/'); 
-      fn(obj,i,ctx);
-      if (has.call(obj,i)) traverse(obj[i],ctx,fn);
-      ctx.segments.pop();
+  
+  this.each( function(uri,node,key){
+    inlineDereference.call(self,uri,node,key) ||
+      remotes.push([uri,node,key]);
+  })
+  
+  if (remotes.length == 0) {
+    self.emit('ready');
+  } else {
+    while (remotes.length){
+      var next = remotes.shift()
+      next.push(remotes.length == 0);
+      asyncDereference.apply(self,next);
     }
-    break;
-    
-    case 'object':
-    if (obj.id){
-      ctx.scopes.push( ctx.uri.join(obj.id) );
-      ctx.uri = ctx.scopes[ctx.scopes.length-1];
-    }
-    for (var k in obj){
-      if (k == 'enum') continue;
-      ctx.path     = ctx.segments.join('/');  // parent path
-      ctx.segments.push(k);
-      ctx.childPath = ctx.segments.join('/'); 
-      fn(obj,k,ctx);
-      if (has.call(obj,k)) traverse(obj[k],ctx,fn);
-      ctx.segments.pop();
-    }
-    if (obj.id) {
-      ctx.scopes.pop();
-      ctx.uri = ctx.scopes[ctx.scopes.length-1];
-    }
-    break;
   }
 }
+
+// private 
+
+function inlineDereference(uri,node,key){
+  var root = node.root()
+    , ref = root.$(uri)  // try inline dereference by URI or JSON pointer 
+  if (ref) node.set(key,ref);
+  return (!!ref);
+}
+
+function asyncDereference(uri,node,key){
+  var self = this, agent = this.agent
+  agent.getCache(uri, function(err,ref){
+    if (err){
+      self.emit('error', err);
+      return;
+    }
+
+    node.set(key,ref);
+    if (last) self.emit('ready');
+
+  })
+}
+
+

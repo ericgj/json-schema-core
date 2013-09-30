@@ -1,7 +1,7 @@
 var assert = require('timoxley-assert')
   , core = require('json-schema-core')
   , Schema = core.Schema
-
+  , Refs = core.Refs
 
 fixtures = {};
 
@@ -132,7 +132,7 @@ describe('json-schema-core', function(){
   describe('search paths', function(){
     
     beforeEach(function(){
-      this.subject = new Schema().parse(fixtures.search.all);
+      this.subject = Schema.root(new Refs).parse(fixtures.search.all);
     })
 
     it('should find root from root', function(){
@@ -166,7 +166,7 @@ describe('json-schema-core', function(){
   describe('binding', function(){
    
     function bindTo(sch,inst){
-      var schema = new Schema().parse(fixtures.correlate[sch]);
+      var schema = Schema.root(new Refs).parse(fixtures.correlate[sch]);
       return schema.bind(fixtures.instance[inst]);
     }
 
