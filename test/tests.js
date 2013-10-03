@@ -309,6 +309,18 @@ describe('json-schema-core', function(){
       assert(expinst   === act.instance);
     })
 
+    it('should get sub-correlate within array instance', function(){
+      var subject = bindTo('array','items');
+      var expschema = subject.schema.get('properties').get('things').get('items').get()
+        , expinst = subject.instance.things[1]
+      assert(expschema);
+      assert(expinst);
+      var act = subject.$('things/1');
+      assert(act);
+      assert(expschema === act.schema);
+      assert(expinst   === act.instance);
+    })
+
     it('should return undefined if instance doesnt have specified property in schema', function(){
       var subject = bindTo('simple','invalid');
       var expschema = subject.schema.get('properties').get('complex')
@@ -516,6 +528,15 @@ fixtures.correlate.simple = {
   }
 }
 
+fixtures.correlate.array = {
+  properties: {
+    things: {
+      type: "array",
+      items: { }
+    }
+  }
+}
+
 fixtures.instance = {};
 fixtures.instance.valid = {
   simple: "word",
@@ -526,6 +547,14 @@ fixtures.instance.valid = {
     },
     three: "kings"
   }
+}
+
+fixtures.instance.items = {
+  things: [
+    { }, 
+    { },
+    { }
+  ]
 }
 
 fixtures.instance.invalid = {

@@ -14,7 +14,7 @@ function Correlation(schema,instance){
   since you need the semantics of oneOf, anyOf, etc.
 
   However, here the core can provide a naive implementation that simply 
-  walks down the schema.get('properties').
+  walks down the schema.get('properties') or schema.get('items').
 
   A validation plugin simply has to provide a `subschema(prop)` binding function
   to deal with resolving multiple potential paths.
@@ -22,7 +22,10 @@ function Correlation(schema,instance){
 */
   
 Correlation.prototype.subschema = function(prop){
-  var props = this.schema.get('properties') 
+  var schema = this.schema
+    , items = schema.get('items')
+  if (items) return items.get();  // prop is array index, so schema for it is items
+  var props = schema.get('properties') 
   if (!props) return;
   return props.get(prop);
 }
