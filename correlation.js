@@ -24,7 +24,13 @@ function Correlation(schema,instance){
 Correlation.prototype.subschema = function(prop){
   var schema = this.schema
     , items = schema.get('items')
-  if (items) return items.get();  // prop is array index, so schema for it is items
+  if (items) {
+    if (items.nodeType == 'SchemaArray'){
+      return items.get(prop); 
+    } else {
+      return items;
+    }
+  }
   var props = schema.get('properties') 
   if (!props) return;
   return props.get(prop);

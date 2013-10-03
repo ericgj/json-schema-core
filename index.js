@@ -4,16 +4,15 @@ var each = require('each')
   , Uri = require('json-schema-uri')
   , has = Object.hasOwnProperty
 
-var Correlation = require('./correlation')
-  , Refs = require('./refs')
+var Refs = require('./refs')
+  , Correlation = require('./correlation')
 
 module.exports = {
   Node: Node,
   Schema: Schema,
   SchemaCollection: SchemaCollection,
   SchemaArray: SchemaArray,
-  SchemaBoolean: SchemaBoolean,
-  Correlation: Correlation,
+  Correlation: Correlation
 };
 
 
@@ -120,7 +119,7 @@ Schema.prototype.parse = function(obj){
     if (klass){
       self.addCondition(key,val,klass);
     } else {
-      self._properties[key] = val;
+      self.addProperty(key,val);
     }
   }) 
   return this;
@@ -143,10 +142,19 @@ Schema.prototype.each = function(fn){
 }
 
 Schema.prototype.addCondition = function(key,val,klass){
-  var condition = new klass(this).parse(val);
-  this.set(key,condition);
+  var parsed = new klass(this).parse(val);
+  if (parsed instanceof Node){
+    this.set(key,parsed);
+  } else {
+    this.addProperty(key,parsed);
+  }
 }
 
+Schema.prototype.addProperty = function(key,val){
+  this._properties[key] = val;
+}
+
+Schema.prototype.getProperty = 
 Schema.prototype.property = function(key){
   return this._properties[key];
 }
@@ -204,7 +212,7 @@ function base(target){
   target.addType('patternProperties',PatternProperties);
   target.addType('additionalProperties',AdditionalProperties);
   target.addType('dependencies',Dependencies);
-  target.addType('type',Type);
+  // target.addType('type',Type);
   target.addType('allOf',AllOf);
   target.addType('anyOf',AnyOf);
   target.addType('oneOf',OneOf);
@@ -294,55 +302,18 @@ SchemaArray.prototype.addSchema = function(val){
   this.set(schema);
 }
 
-function SchemaBoolean(parent){
-  Node.call(this,parent);
-  this.nodeType = 'SchemaBoolean';
-  this._schema = undefined;
-  this._value = false;
-  this.isBoolean = true;
-}
-inherit(AdditionalItems,Node);
 
-SchemaBoolean.prototype.add = function(obj){
-  ("boolean" == typeof obj ? this.addValue(obj) : this.addSchema(obj));
+function SchemaOrBoolean(parent){
+  if (!(this instanceof SchemaOrBoolean)) return new SchemaOrBoolean(parent);
+  this.parent = parent;
   return this;
 }
 
-SchemaBoolean.prototype.each = function(fn){
-  if (this.isBoolean){
-    fn(undefined, this._value)  // not sure about this
-  } else {
-    this._schema.each(fn)
-  }
+SchemaOrBoolean.prototype.parse = function(obj){
+  return (type(obj) == 'boolean' ? obj
+                                 : new Schema(this.parent).parse(obj)
+         );
 }
-
-SchemaBoolean.prototype.get = function(key){
-  return (this.isBoolean ? this._value : this._schema.get(key));
-}
-
-SchemaBoolean.prototype.set = function(obj){
-  this.isBoolean = ("boolean" == typeof obj)
-  if (this.isBoolean){
-    this._value = obj;
-  } else {
-    this._schema = obj;
-  }
-}
-
-SchemaBoolean.prototype.has = function(key){
-  return (this.isBoolean ? this._value : this._schema.has(key));
-}
-
-SchemaBoolean.prototype.addValue = function(val){
-  this.set(!!val);
-}
-
-SchemaBoolean.prototype.addSchema = function(obj){
-  var schema = new Schema(this).parse(obj);
-  this.set(schema);
-}
-
-
 
 
 ///////
@@ -390,103 +361,28 @@ inherit(Not, Schema);
 
 
 function AdditionalProperties(parent){
-  SchemaBoolean.call(this,parent);
-  this.nodeType = 'AdditionalProperties';
+  SchemaOrBoolean.call(this,parent);
 }
 function AdditionalItems(parent){
-  SchemaBoolean.call(this,parent);
-  this.nodeType = 'AdditionalItems';
+  SchemaOrBoolean.call(this,parent);
 }
-inherit(AdditionalProperties,SchemaBoolean);
-inherit(AdditionalItems,SchemaBoolean);
+inherit(AdditionalProperties,SchemaOrBoolean);
+inherit(AdditionalItems,SchemaOrBoolean);
 
 
 // custom node classes
 
-function Type(parent){
-  Node.call(this,parent);
-  this.nodeType = 'Type';
-  this._values = [];
-}
-inherit(Type, Node);
-
-Type.prototype.parse = function(val){
-  this.isArray = type(val) == 'array';
-  var self = this;
-  if (this.isArray){
-    each(val, function(t,i){
-      var ref = refOf(val)
-      if (ref) { self.addRef(ref,i); return; }
-      self.set(t);
-    })
-  } else {
-    self.set(val);
-  }
+function Items(parent){
+  if (!(this instanceof Items)) return new Items(parent);
+  this.parent = parent;
   return this;
 }
-
-Type.prototype.each = function(fn){
-  each(this._values,function(val,i){ fn(i,val); });
-}
-
-Type.prototype.get = function(i){
-  i = i || 0;
-  return this._values[i];
-}
-
-Type.prototype.set = function(val){
-  this._values.push(val);
-}
-
-Type.prototype.has = function(i){
-  return !!this._values[i];
-}
-
-
-function Items(parent){
-  Node.call(this,parent);
-  this.nodeType = 'Items';
-  this._items = [];
-}
-inherit(Items, Node);
 
 Items.prototype.parse = function(obj){
-  this.isArray = type(obj) == 'array';
-  var self = this;
-  if (this.isArray){
-    each(obj, function(s,i){
-      var ref = refOf(val)
-      if (ref) { self.addRef(ref,i); return; }
-      self.addSchema(s);
-    })
-  } else {
-    self.addSchema(obj);
-  }
-  return this;
+  return (type(obj) == 'array' ? new SchemaArray(this.parent).parse(obj)
+                               : new Schema(this.parent).parse(obj)
+         );
 }
-
-Items.prototype.each = function(fn){
-  each(this._items, function(schema,i){ fn(i,schema); });
-}
-
-Items.prototype.get = function(i){
-  i = i || 0;
-  return this._items[i];
-}
-
-Items.prototype.set = function(schema){
-  this._items.push(schema);
-}
-
-Items.prototype.has = function(i){
-  return !!this._items[i];
-}
-
-Items.prototype.addSchema = function(obj){
-  var schema = new Schema(this).parse(obj);
-  this.set(schema);
-}
-
 
 
 function Dependencies(parent){
@@ -527,54 +423,29 @@ Dependencies.prototype.addDependency = function(key,val){
   this.set(key,dep);
 }
 
+Dependencies.prototype.eachSchemaDependency = function(fn){
+  each(this._deps, function(key,dep){
+    if (dep instanceof Schema) fn(key,dep);
+  })
+}
+
+Dependencies.prototype.eachPropertyDependency = function(fn){
+  each(this._deps, function(key,dep){
+    if (type(dep) == 'array') fn(key,dep);
+  })
+}
+
 
 function Dependency(parent){
-  Node.call(this,parent);
-  this.nodeType = 'Dependency';
-  this._values = [];
-  this._schema = undefined;
+  if (!(this instanceof Dependency)) return new Dependency(parent);
+  this.parent = parent;
+  return this;
 }
-inherit(Dependency,Node);
 
 Dependency.prototype.parse = function(obj){
-  this.isArray = (type(obj) == 'array');
-  if (this.isArray){
-    this._values = obj;
-  } else {
-    var schema = new Schema(doc).parse(obj);
-    this._schema = schema;
-  }
+  return (type(obj) == 'array'  ? obj
+                                : new Schema(this.parent).parse(obj)
+         );
 }
 
-Dependency.prototype.each = function(fn){
-  if (this.isArray) {
-    each(this._values, function(val,i){ fn(i,val); });
-  } else {
-    this._schema.each(fn); // not sure about this
-  }
-}
-
-Dependency.prototype.get = function(i){
-  if (this.isArray){
-    return this._values[i];
-  } else {
-    return this._schema;
-  }
-}
-
-Dependency.prototype.set = function(val){
-  if (this.isArray){
-    this._values.push(val);
-  } else {
-    this._schema = val;
-  }
-}
-
-Dependency.prototype.has = function(val){
-  if (this.isArray){
-    return has.call(this._values,val);
-  } else {
-    return (this._schema === val);
-  }
-}
 

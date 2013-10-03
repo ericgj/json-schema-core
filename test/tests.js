@@ -33,10 +33,8 @@ describe('json-schema-core', function(){
       assert(conditions.get('properties').nodeType == 'Properties');
     })
 
-    it('should have type condition', function(){
-      var conditions = this.subject;
-      assert(conditions.get('type'));
-      assert(conditions.get('type').nodeType == 'Type');
+    it('should have type property', function(){
+      assert(this.subject.property('type'));
     })
 
     it('should have unparsed properties', function(){
@@ -68,37 +66,6 @@ describe('json-schema-core', function(){
 
   })
 
-  describe('parse type', function(){
-
-    beforeEach( function(){
-      this.subject = new Schema().parse(fixtures.parse.type);
-    })
-
-    it('should parse', function(){ 
-      console.log("subject type: %o", this.subject);
-    })
-
-    it('should parse simple type', function(){
-      var props = this.subject.get('properties')
-        , prop = props.get('simple')
-        , type = prop.get('type')
-      assert(type.get() == 'string');
-      assert(!type.isArray);
-    })
-
-    it('should parse multi value type', function(){
-      var props = this.subject.get('properties')
-        , prop = props.get('multi')
-        , type = prop.get('type')
-      assert(type.isArray);
-      assert(type.has(0));
-      assert(type.has('1'));
-      assert(type.has('2'));
-    })
-
-
-  })
-
   describe('parse allOf', function(){
 
     beforeEach( function(){
@@ -121,7 +88,28 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('parse additionalProperties', function(){
 
+    beforeEach( function(){
+      this.subject = new Schema().parse(fixtures.parse.additionalProperties);
+    })
+
+    it('should parse', function(){ 
+      console.log("subject additionalProperties: %o", this.subject);
+    })
+
+    it('should parse object value as condition', function(){
+      var act = this.subject.get('anyOf').get(1).get('additionalProperties');
+      assert(act.nodeType == 'Schema');
+    })
+
+    it('should parse boolean value as property', function(){
+      var act = this.subject.get('anyOf').get(0).property('additionalProperties');
+      assert(act == false);
+    })
+
+  })
+   
 
   // todo: more node types
   describe('parse other node types', function(){
@@ -140,7 +128,7 @@ describe('json-schema-core', function(){
     })
 
     it('should find root from branch', function(){
-      var branch = this.subject.get('definitions').get('one').get('type');
+      var branch = this.subject.get('definitions').get('one');
       assert(branch);
       assert(branch.$('#') === this.subject);
     })
@@ -309,13 +297,25 @@ describe('json-schema-core', function(){
       assert(expinst   === act.instance);
     })
 
-    it('should get sub-correlate within array instance', function(){
-      var subject = bindTo('array','items');
-      var expschema = subject.schema.get('properties').get('things').get('items').get()
+    it('should get sub-correlate within array instance, single items schema', function(){
+      var subject = bindTo('items','items');
+      var expschema = subject.schema.get('properties').get('things').get('items')
         , expinst = subject.instance.things[1]
       assert(expschema);
       assert(expinst);
       var act = subject.$('things/1');
+      assert(act);
+      assert(expschema === act.schema);
+      assert(expinst   === act.instance);
+    })
+
+    it('should get sub-correlate within array instance, multi items schema', function(){
+      var subject = bindTo('itemsarray','items');
+      var expschema = subject.schema.get('properties').get('things').get('items').get(2)
+        , expinst = subject.instance.things[2]
+      assert(expschema);
+      assert(expinst);
+      var act = subject.$('things/2');
       assert(act);
       assert(expschema === act.schema);
       assert(expinst   === act.instance);
@@ -412,6 +412,18 @@ fixtures.parse.allof = {
     fixtures.parse.type
   ]
 }
+
+fixtures.parse.additionalProperties = {
+  anyOf: [
+    { 
+      additionalProperties: false 
+    },
+    { 
+      additionalProperties: fixtures.parse.properties
+    }
+  ]
+}
+
 
 fixtures.search = {};
 fixtures.search.all = {
@@ -528,11 +540,24 @@ fixtures.correlate.simple = {
   }
 }
 
-fixtures.correlate.array = {
+fixtures.correlate.items = {
   properties: {
     things: {
       type: "array",
       items: { }
+    }
+  }
+}
+
+fixtures.correlate.itemsarray = {
+  properties: {
+    things: {
+      type: "array",
+      items: [ 
+        { },
+        { },
+        { }
+      ]
     }
   }
 }
