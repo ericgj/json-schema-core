@@ -159,6 +159,10 @@ Schema.prototype.property = function(key){
   return this._properties[key];
 }
 
+Schema.prototype.hasProperty = function(key){
+  return has.call(this._properties,key);
+}
+
 // mix in each binding method into a Correlation object
 Schema.prototype.bind = function(instance){
   var ret = new Correlation(this,instance);
