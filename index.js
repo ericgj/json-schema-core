@@ -317,8 +317,13 @@ SchemaArray.prototype.get = function(i){
   return this._schemas[i];
 }
 
-SchemaArray.prototype.set = function(schema){
-  this._schemas.push(schema);
+SchemaArray.prototype.set = function(i,schema){
+  if (arguments.length == 1){
+    schema = i; i = undefined;
+    this._schemas.push(schema);
+  } else {
+    this._schemas[i] = schema;
+  }
 }
 
 SchemaArray.prototype.has = function(i){
