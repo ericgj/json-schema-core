@@ -33,6 +33,11 @@ Node.prototype.has = function(key){}
 Node.prototype.set = function(key,val){}  // setter
 Node.prototype.each = function(fn){} // iterator
 
+Node.prototype.toObject = function(){}  // serializer
+Node.prototype.toString = function(){ 
+  return JSON.stringify(this.toObject());
+}
+
 Node.prototype.scope = function(id){
   var cur = this._scope || (this.parent && this.parent.scope()); 
   if (arguments.length == 0) {
@@ -167,6 +172,17 @@ Schema.prototype.eachProperty = function(fn){
   each(this._properties, fn);
 }
 
+Schema.prototype.toObject = function(){
+  var obj = {}
+  this.eachProperty( function(key,val){
+    obj[key] = val;
+  })
+  this.each( function(key,cond){
+    obj[key] = cond.toObject();
+  })
+  return obj;
+}
+
 // mix in each binding method into a Correlation object
 Schema.prototype.bind = function(instance){
   var ret = new Correlation(this,instance);
@@ -271,6 +287,14 @@ SchemaCollection.prototype.addSchema = function(key,val){
   this.set(key,schema);
 }
 
+SchemaCollection.prototype.toObject = function(){
+  var obj = {}
+  this.each( function(key,schema){
+    obj[key] = schema.toObject();
+  })
+  return obj;
+}
+
 
 function SchemaArray(parent){
   Node.call(this,parent);
@@ -308,6 +332,12 @@ SchemaArray.prototype.each = function(fn){
 SchemaArray.prototype.addSchema = function(val){
   var schema = new Schema(this).parse(val);
   this.set(schema);
+}
+
+SchemaArray.prototype.toObject = function(){
+  var obj = []
+  this.each( function(i,schema){ obj.push(schema.toObject()); } );
+  return obj;
 }
 
 
@@ -441,6 +471,18 @@ Dependencies.prototype.eachPropertyDependency = function(fn){
   each(this._deps, function(key,dep){
     if (type(dep) == 'array') fn(key,dep);
   })
+}
+
+Dependencies.prototype.toObject = function(){
+  var obj = {}
+  this.each( function(key,dep){ 
+    if (dep.nodeType && dep.nodeType == 'Schema'){
+      obj[key] = dep.toObject(); 
+    } else {
+      obj[key] = dep;
+    }
+  });
+  return obj;
 }
 
 

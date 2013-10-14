@@ -376,6 +376,18 @@ describe('json-schema-core', function(){
 
   })
 
+  describe('serialization', function(){
+
+    it('should serialize', function(){ 
+      var subject = new Schema().parse(fixtures.serialize.all);
+      var act = subject.toObject();
+      console.log('serialize: %o', act);
+      console.log('%s', subject.toString());
+      assert.deepEqual(act,fixtures.serialize.all);
+    })
+
+  })
+
 })
 
 
@@ -627,3 +639,32 @@ fixtures.union.three = {
 
 
 
+fixtures.serialize = {}
+fixtures.serialize.all = {
+  id: "http://test.me/schema#",
+  properties: {
+    one: {
+      properties: {
+        oneone: { }
+      }
+    },
+    two: { }
+  },
+ allOf: [
+   {
+     description: "allOf 0",
+   },
+   {
+     enum: [{ one: 1, two: 2 }, { one: 2, two: 1 }]
+   }
+ ],
+ dependencies: {
+   one: ["three", "five", "seven"],
+   two: {
+     properties: {
+       "four": { type: "integer" },
+       "six":  { type: "string"  }
+     }
+   }
+ }
+}
