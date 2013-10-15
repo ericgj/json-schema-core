@@ -1,7 +1,7 @@
 {
-  "name": "json-schema-core",
+  "name": "json-schema-core-component",
   "version": "0.0.21",
-  "description": "JSON Schema core module",
+  "description": "JSON Schema core data structures",
   "main": "index.js",
   "directories": {
     "test": "test"

@@ -7,8 +7,14 @@
 
 ## Installation
 
+component:
+
     $ component install ericgj/json-schema-core
 
+npm:
+
+    $ npm install json-schema-core-component
+    
 ## API
 
    
