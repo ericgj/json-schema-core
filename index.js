@@ -1,6 +1,7 @@
-var each = require('each')
-  , type = require('type')
-  , inherit = require('inherit')
+var isBrowser = require('is-browser')
+  , each = isBrowser ? require('each') : require('each-component')
+  , type = isBrowser ? require('type') : require('component-type')
+  , inherit = isBrowser ? require('inherit') : require('inherit-component')
   , Uri = require('json-schema-uri')
   , has = Object.hasOwnProperty
 
@@ -502,5 +503,4 @@ Dependency.prototype.parse = function(obj){
                                 : new Schema(this.parent).parse(obj)
          );
 }
-
 

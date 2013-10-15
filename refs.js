@@ -1,6 +1,7 @@
-var each = require('each')
-
 'use strict';
+
+var isBrowser = require('is-browser')
+  ,  each = isBrowser ? require('each') : require('each-component')
 
 module.exports = Refs;
 

@@ -1,4 +1,4 @@
-var assert = require('timoxley-assert')
+var assert = require('assert')
   , core = require('json-schema-core')
   , Schema = core.Schema
   , Refs = core.Refs
