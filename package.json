@@ -1,6 +1,6 @@
 {
   "name": "json-schema-core",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "JSON Schema core module",
   "main": "index.js",
   "directories": {
