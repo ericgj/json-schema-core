@@ -1,9 +1,12 @@
-var assert = require('assert')
-  , core = require('json-schema-core')
+'use strict';
+
+var isBrowser = require('is-browser')
+  , assert = require('assert')
+  , core = isBrowser ? require('json-schema-core') : require('json-schema-core-component')
   , Schema = core.Schema
   , Refs = core.Refs
 
-fixtures = {};
+var fixtures = {};
 
 Schema.addBinding('nodeTypeAt', nodeTypeAt);
 

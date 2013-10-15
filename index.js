@@ -2,7 +2,7 @@ var isBrowser = require('is-browser')
   , each = isBrowser ? require('each') : require('each-component')
   , type = isBrowser ? require('type') : require('component-type')
   , inherit = isBrowser ? require('inherit') : require('inherit-component')
-  , Uri = require('json-schema-uri')
+  , Uri = isBrowser ? require('json-schema-uri') : require('json-schema-uri-component')
   , has = Object.hasOwnProperty
 
 var Refs = require('./refs')

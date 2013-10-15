@@ -10,7 +10,7 @@
     "test": "mocha --ui bdd test/tests.js"
   },
   "dependencies": {
-    "json-schema-uri": "https://github.com/ericgj/json-schema-uri/tarball/master",
+    "json-schema-uri-component": "https://github.com/ericgj/json-schema-uri/tarball/master",
     "each-component": "https://github.com/component/each/tarball/master",  
     "component-type": "https://github.com/component/type/tarball/master",
     "inherit-component": "https://github.com/component/inherit/tarball/master",
