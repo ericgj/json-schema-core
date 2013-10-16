@@ -149,7 +149,7 @@ Schema.prototype.each = function(fn){
 
 Schema.prototype.addCondition = function(key,val,klass){
   var parsed = new klass(this).parse(val);
-  if (parsed instanceof Node){
+  if (has.call(parsed,'nodeType')){
     this.set(key,parsed);
   } else {
     this.addProperty(key,parsed);
