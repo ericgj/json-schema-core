@@ -264,28 +264,37 @@ describe('json-schema-core', function(){
     })
 
   })
-  
-  describe('binding', function(){
-   
+
+  describe('correlation: binding', function(){
+
     function bindTo(sch,inst){
-      var schema = new Schema().parse(fixtures.correlate[sch]);
-      return schema.bind(fixtures.instance[inst]);
+      var schema = new Schema().parse(fixtures.correlate.schema[sch]);
+      return schema.bind(fixtures.correlate.instance[inst]);
     }
 
     it('should bind to an instance', function(){
       var act = bindTo('simple', 'valid');
       assert(act);
     })
-   
-    it('should get sub-correlate', function(){
+     
+    it('should mix in binding method', function(){
       var subject = bindTo('simple','valid');
-      var expschema = subject.schema.get('properties').get('complex')
-        , expinst = subject.instance.complex
-      var act = subject.get('complex');
-      assert(act);
-      assert(expschema === act.schema);
-      assert(expinst   === act.instance);
+      assert(subject.nodeTypeAt);
     })
+    
+    it('binding method should be callable bound to correlation', function(){
+      var subject = bindTo('simple','valid');
+      assert('Schema' == subject.nodeTypeAt('#/properties/complex/properties/three'));
+    })
+
+  })
+
+  describe('correlation: subschema', function(){
+   
+    function bindTo(sch,inst){
+      var schema = new Schema().parse(fixtures.correlate.schema[sch]);
+      return schema.bind(fixtures.correlate.instance[inst]);
+    }
 
     it('should get sub-correlate recursively', function(){
       var subject = bindTo('simple','valid');
@@ -345,15 +354,83 @@ describe('json-schema-core', function(){
       var act = subject.$('#/complex/four');
       assert(act === undefined);
     })
-    
-    it('should mix in binding method', function(){
-      var subject = bindTo('simple','valid');
-      assert(subject.nodeTypeAt);
+  
+  })
+
+  describe('correlation: coerce', function(){
+   
+    function bindTo(sch,inst){
+      var schema = new Schema().parse(fixtures.coerce.schema[sch]);
+      return schema.bind(fixtures.coerce.instance[inst]);
+    }
+
+    it('should return a deep-equal copy of instance if no type or default specified', function(){
+      var subject = bindTo('none','obj')
+        , act = subject.coerce()
+      assert.deepEqual(subject.instance,act.instance);
     })
-    
-    it('binding method should be callable bound to correlation', function(){
-      var subject = bindTo('simple','valid');
-      assert('Schema' == subject.nodeTypeAt('#/properties/complex/properties/three'));
+  
+    it('should return a deep-equal copy of instance if specified type matches instance type', function(){
+      var subject = bindTo('obj','obj')
+        , act = subject.coerce()
+      assert.deepEqual(subject.instance,act.instance);
+    })
+
+    it('should return an empty object if instance undefined and no default, type == object', function(){
+      var subject = bindTo('obj','undef')
+        , act = subject.coerce()
+      assert(act.instance);
+      assert.deepEqual({},act.instance);
+    })
+
+    it('should return an empty array if instance undefined and no default, type == array', function(){
+      var subject = bindTo('array','undef')
+        , act = subject.coerce()
+      assert(act.instance);
+      assert.deepEqual([],act.instance);
+    })
+
+    it('should coerce integer to integer', function(){
+      var subject = bindTo('integer','integer')
+        , act = subject.coerce()
+      assert(subject.instance == act.instance);
+    })
+
+    it('should coerce float to integer (truncate)', function(){
+      var subject = bindTo('integer','float')
+        , act = subject.coerce()
+      assert(parseInt(subject.instance) == act.instance);
+    })
+
+   
+    it('should set specified default value if instance undefined, type == string', function(){
+      var subject = bindTo('stringDefault', 'undef')
+        , act = subject.coerce()
+      assert(subject.schema.hasProperty('default'));
+      assert(subject.schema.property('default') == act.instance);
+    })
+
+    it('should not set specified default value if instance defined, type == numeric', function(){
+      var subject = bindTo('numberDefault', 'zero')
+        , act = subject.coerce()
+      assert(subject.schema.hasProperty('default'));
+      assert(subject.schema.property('default') !== act.instance);
+      assert(subject.instance == act.instance);
+    })
+
+    it('should merge specified default value keys with instance, type == object', function(){
+      var subject = bindTo('evenKeys', 'twoKeys')
+        , act = subject.coerce()
+        , expinst = subject.instance
+        , expdef = subject.schema.property('default')
+      console.log("coerce merge default: %o", act);
+      assert(expinst["one"]);
+      assert(expinst["two"]);
+      assert(expdef["two"]);
+      assert(expdef["four"]);
+      assert(expinst["one"] == act.instance["one"]);
+      assert(expinst["two"] == act.instance["two"]);
+      assert(expdef["four"] == act.instance["four"]);
     })
 
   })
@@ -536,7 +613,8 @@ fixtures.refs.multi = {
 
   
 fixtures.correlate = {};
-fixtures.correlate.simple = {
+fixtures.correlate.schema = {};
+fixtures.correlate.schema.simple = {
   properties: {
     simple: { type: 'string' },
     complex: { 
@@ -555,7 +633,7 @@ fixtures.correlate.simple = {
   }
 }
 
-fixtures.correlate.items = {
+fixtures.correlate.schema.items = {
   properties: {
     things: {
       type: "array",
@@ -564,7 +642,7 @@ fixtures.correlate.items = {
   }
 }
 
-fixtures.correlate.itemsarray = {
+fixtures.correlate.schema.itemsarray = {
   properties: {
     things: {
       type: "array",
@@ -577,8 +655,8 @@ fixtures.correlate.itemsarray = {
   }
 }
 
-fixtures.instance = {};
-fixtures.instance.valid = {
+fixtures.correlate.instance = {};
+fixtures.correlate.instance.valid = {
   simple: "word",
   complex: {
     one: "of",
@@ -589,7 +667,7 @@ fixtures.instance.valid = {
   }
 }
 
-fixtures.instance.items = {
+fixtures.correlate.instance.items = {
   things: [
     { }, 
     { },
@@ -597,7 +675,7 @@ fixtures.instance.items = {
   ]
 }
 
-fixtures.instance.invalid = {
+fixtures.correlate.instance.invalid = {
   simple: "man",
   complex: {
     one: "to",
@@ -605,7 +683,7 @@ fixtures.instance.invalid = {
   }
 }
 
-fixtures.instance.additional = {
+fixtures.correlate.instance.additional = {
   simple: "giant",
   complex: {
     one: "hand",
@@ -617,6 +695,28 @@ fixtures.instance.additional = {
   }
 }
 
+
+fixtures.coerce = {};
+fixtures.coerce.schema = {};
+fixtures.coerce.schema.none = {};
+fixtures.coerce.schema.obj = { type: "object" };
+fixtures.coerce.schema.array = { type: "array" };
+fixtures.coerce.schema.integer = { type: "integer" };
+fixtures.coerce.schema.stringDefault = { type: "string", default: "" };
+fixtures.coerce.schema.numberDefault = { type: "number", default: 5 };
+fixtures.coerce.schema.evenKeys = {
+  type: "object",
+  default: { two: 2, four: 4 }
+}
+
+fixtures.coerce.instance = {};
+fixtures.coerce.instance.obj = { one: "1" };
+fixtures.coerce.instance.integer = 5;
+fixtures.coerce.instance.float = 5.5;
+fixtures.coerce.instance.undef = undefined;
+fixtures.coerce.instance.zero = 0;
+fixtures.coerce.instance.oddKeys = { one: 1, three: 3 };
+fixtures.coerce.instance.twoKeys = { one: 11, two: 22 }
 
 fixtures.union = {};
 fixtures.union.one = {
