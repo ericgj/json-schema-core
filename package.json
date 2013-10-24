@@ -12,6 +12,7 @@
   "dependencies": {
     "json-schema-uri-component": "https://github.com/ericgj/json-schema-uri/tarball/master",
     "each-component": "https://github.com/component/each/tarball/master",  
+    "emitter-component": "https://github.com/component/emitter/tarball/master",  
     "component-type": "https://github.com/component/type/tarball/master",
     "inherit-component": "https://github.com/component/inherit/tarball/master",
     "is-browser": "https://github.com/forbeslindesay/is-browser/tarball/master"

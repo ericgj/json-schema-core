@@ -1,5 +1,8 @@
 'use strict';
-var type = require('type')
+
+var isBrowser = require('is-browser')
+  , type = isBrowser ? require('type') : require('component-type')
+  , Emitter = isBrowser ? require('emitter') : require('emitter-component')
 
 module.exports = Correlation;
 
@@ -8,6 +11,9 @@ function Correlation(schema,instance){
   this.schema = schema; this.instance = instance;
   return this;
 }
+
+/* Used by extensions (e.g. validate) to signal events */
+Correlation.prototype = new Emitter();
 
 /* 
   This is the tricky thing, since you have to correlate movement down the instance
