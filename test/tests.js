@@ -402,6 +402,25 @@ describe('json-schema-core', function(){
       assert(parseInt(subject.instance) == act.instance);
     })
 
+    it('should coerce null to empty string', function(){
+      var subject = bindTo('string','nullval')
+        , act = subject.coerce()
+      assert('' == act.instance);
+    })
+
+    it('should coerce null to NaN for number type', function(){
+      var subject = bindTo('number','nullval')
+        , act = subject.coerce()
+      console.log('coerce null to number: %o', act);
+      assert(isNaN(act.instance));
+    })
+   
+    it('should set specified default value if instance undefined, type == string', function(){
+      var subject = bindTo('stringDefault', 'undef')
+        , act = subject.coerce()
+      assert(subject.schema.hasProperty('default'));
+      assert(subject.schema.property('default') == act.instance);
+    })
    
     it('should set specified default value if instance undefined, type == string', function(){
       var subject = bindTo('stringDefault', 'undef')
@@ -701,7 +720,9 @@ fixtures.coerce.schema = {};
 fixtures.coerce.schema.none = {};
 fixtures.coerce.schema.obj = { type: "object" };
 fixtures.coerce.schema.array = { type: "array" };
+fixtures.coerce.schema.number = { type: "number" };
 fixtures.coerce.schema.integer = { type: "integer" };
+fixtures.coerce.schema.string = { type: "string" };
 fixtures.coerce.schema.stringDefault = { type: "string", default: "" };
 fixtures.coerce.schema.numberDefault = { type: "number", default: 5 };
 fixtures.coerce.schema.evenKeys = {
@@ -714,6 +735,7 @@ fixtures.coerce.instance.obj = { one: "1" };
 fixtures.coerce.instance.integer = 5;
 fixtures.coerce.instance.float = 5.5;
 fixtures.coerce.instance.undef = undefined;
+fixtures.coerce.instance.nullval = null;
 fixtures.coerce.instance.zero = 0;
 fixtures.coerce.instance.oddKeys = { one: 1, three: 3 };
 fixtures.coerce.instance.twoKeys = { one: 11, two: 22 }

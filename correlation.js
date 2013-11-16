@@ -121,7 +121,9 @@ function coerceType(instance,t){
     break;
 
     case 'number':
-    ret = ((instance/1 % 1) == 0) ? parseInt(instance) : parseFloat(instance);
+    ret = (instance === undefined) || 
+          (instance === null) || 
+          ((instance/1 % 1) == 0) ? parseInt(instance) : parseFloat(instance);
     break;
 
     case 'object':
@@ -129,7 +131,8 @@ function coerceType(instance,t){
     break;
 
     case 'string':
-    ret = ( instance === undefined ? "" : instance.toString() );
+    ret = (instance === undefined) || 
+          (instance === null) ? "" : instance.toString();
     break;
 
     default:
